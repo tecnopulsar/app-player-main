@@ -1,0 +1,200 @@
+{
+    "info": {
+        "name": "App Player API",
+        "description": "Colección de endpoints para el control del reproductor multimedia",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Página Principal",
+            "request": {
+                "method": "GET",
+                "url": "http://localhost:3000/",
+                "description": "Obtiene la página principal de la aplicación"
+            }
+        },
+        {
+            "name": "2. Control VLC",
+            "item": [
+                {
+                    "name": "2.1 Pantalla Completa",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:3000/fullscreen",
+                        "description": "Activa/desactiva el modo pantalla completa"
+                    }
+                },
+                {
+                    "name": "2.2 Detener",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:3000/stop",
+                        "description": "Detiene la reproducción actual"
+                    }
+                },
+                {
+                    "name": "2.3 Reproducir",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:3000/play",
+                        "description": "Inicia la reproducción"
+                    }
+                },
+                {
+                    "name": "2.4 Pausar",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:3000/pause",
+                        "description": "Pausa la reproducción actual"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Estado VLC",
+            "request": {
+                "method": "GET",
+                "url": "http://localhost:3000/status",
+                "description": "Obtiene el estado actual del reproductor"
+            }
+        },
+        {
+            "name": "4. Comandos VLC",
+            "request": {
+                "method": "POST",
+                "url": "http://localhost:3000/vlc_command",
+                "description": "Ejecuta un comando personalizado en VLC",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"command\": \"volume&val=256\"\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "5. Control de Playlist",
+            "request": {
+                "method": "POST",
+                "url": "http://localhost:3000/playlist",
+                "description": "Cambia la playlist actual",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"playlistPath\": \"/ruta/a/tu/playlist.m3u\"\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "6. Comandos del Sistema",
+            "request": {
+                "method": "POST",
+                "url": "http://localhost:3000/executeCommand",
+                "description": "Ejecuta un comando del sistema",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"command\": \"ls -la\"\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "7. Subida de Archivos",
+            "request": {
+                "method": "POST",
+                "url": "http://localhost:3000/receive",
+                "description": "Sube archivos para una playlist",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "multipart/form-data"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "file",
+                            "type": "file",
+                            "src": "/ruta/a/tu/video.mp4",
+                            "description": "Archivo de video a subir"
+                        },
+                        {
+                            "key": "playlistName",
+                            "value": "mi_playlist",
+                            "type": "text",
+                            "description": "Nombre de la playlist (opcional)"
+                        },
+                        {
+                            "key": "countPlaylistItems",
+                            "value": "1",
+                            "type": "text",
+                            "description": "Número total de items en la playlist (opcional)"
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Aquí puedes agregar scripts que se ejecuten antes de cada request",
+                    "// Por ejemplo, configurar variables de entorno o tokens"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Aquí puedes agregar tests automáticos para verificar las respuestas",
+                    "// Por ejemplo:",
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});"
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:3000",
+            "type": "string"
+        }
+    ]
+}

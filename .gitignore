@@ -1,0 +1,25 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Entorno
+.env
+
+# Compilación
+dist/
+build/
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+/public/videos
+/public/videosDefecto
+/public/screenshots
+/public/uploads
+
