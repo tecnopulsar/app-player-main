@@ -68,6 +68,7 @@ export class VLCPlayer {
 
             // Configuración de VLC
             const options = [
+                '--vout=gles2',
                 '--loop',                     // Reproducción en bucle
                 '--no-audio',                 // Sin audio por defecto
                 '--no-video-title-show',      // No mostrar título del video

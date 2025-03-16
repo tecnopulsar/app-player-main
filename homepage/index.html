@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Player - Reproductor Multimedia Avanzado</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>App<span>Player</span></h1>
+            </div>
+            <nav class="nav">
+                <ul>
+                    <li><a href="#inicio">Inicio</a></li>
+                    <li><a href="#caracteristicas">Características</a></li>
+                    <li><a href="#api">API</a></li>
+                    <li><a href="#documentacion">Documentación</a></li>
+                    <li><a href="#equipo">Equipo</a></li>
+                </ul>
+            </nav>
+            <div class="menu-btn">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </header>
+
+    <section id="inicio" class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>Reproductor Multimedia Avanzado</h2>
+                <p>Una solución completa para la reproducción y gestión de
+                    contenido multimedia con control remoto a través de API
+                    REST.</p>
+                <div class="hero-buttons">
+                    <a href="#caracteristicas" class="btn btn-primary">Ver
+                        Características</a>
+                    <a href="https://github.com/tecnopulsar/app-player-wetechar"
+                        class="btn btn-secondary">GitHub <i
+                            class="fab fa-github"></i></a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <img src="images/totem2.webp"
+                    alt="App Player Preview">
+            </div>
+        </div>
+    </section>
+
+    <section id="caracteristicas" class="features">
+        <div class="container">
+            <h2 class="section-title">Características Principales</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                    <h3>Reproductor Multimedia</h3>
+                    <p>Reproduce audio y video en múltiples formatos con soporte
+                        para VLC Media Player.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-wifi"></i>
+                    </div>
+                    <h3>Control Remoto</h3>
+                    <p>Controla la reproducción desde cualquier dispositivo en
+                        la red a través de una API REST.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-desktop"></i>
+                    </div>
+                    <h3>Interfaz Moderna</h3>
+                    <p>Interfaz de usuario intuitiva y responsiva para una
+                        experiencia de usuario óptima.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-microchip"></i>
+                    </div>
+                    <h3>Monitoreo del Sistema</h3>
+                    <p>Supervisa recursos del sistema y estado de la red en
+                        tiempo real.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-list-ul"></i>
+                    </div>
+                    <h3>Listas de Reproducción</h3>
+                    <p>Gestiona listas de reproducción personalizadas para
+                        organizar tu contenido.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3>Personalizable</h3>
+                    <p>Arquitectura modular y extensible para adaptarse a
+                        diferentes casos de uso.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="api" class="api">
+        <div class="container">
+            <h2 class="section-title">API REST</h2>
+            <p class="section-description">App Player proporciona una API
+                RESTful completa para controlar todas sus funcionalidades de
+                forma remota.</p>
+
+            <div class="api-endpoints">
+                <div class="endpoint">
+                    <h3>Control de VLC</h3>
+                    <ul>
+                        <li><code>GET /api/vlc/status</code> - Estado actual del
+                            reproductor</li>
+                        <li><code>GET /api/vlc/play</code> - Iniciar
+                            reproducción</li>
+                        <li><code>GET /api/vlc/pause</code> - Pausar
+                            reproducción</li>
+                        <li><code>GET /api/vlc/stop</code> - Detener
+                            reproducción</li>
+                    </ul>
+                </div>
+                <div class="endpoint">
+                    <h3>Sistema</h3>
+                    <ul>
+                        <li><code>GET /api/system/info</code> - Información del
+                            sistema</li>
+                        <li><code>GET /api/system/resources</code> - Recursos
+                            del sistema</li>
+                        <li><code>POST /api/system/reboot</code> - Reiniciar el
+                            sistema</li>
+                    </ul>
+                </div>
+                <div class="endpoint">
+                    <h3>Archivos</h3>
+                    <ul>
+                        <li><code>GET /api/files</code> - Listar archivos
+                            disponibles</li>
+                        <li><code>POST /api/files/upload</code> - Subir archivos
+                        </li>
+                        <li><code>POST /api/playlist/upload</code> - Subir
+                            listas de reproducción</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="api-documentation">
+                <a href="#documentacion" class="btn btn-primary">Ver
+                    Documentación Completa</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="documentacion" class="documentation">
+        <div class="container">
+            <h2 class="section-title">Documentación</h2>
+            <div class="docs-grid">
+                <div class="doc-card">
+                    <h3>Guía de Inicio Rápido</h3>
+                    <p>Aprende a instalar y configurar App Player en minutos.
+                    </p>
+                    <a href="#" class="btn btn-secondary">Ver Guía</a>
+                </div>
+                <div class="doc-card">
+                    <h3>API Reference</h3>
+                    <p>Documentación completa de todos los endpoints de la API.
+                    </p>
+                    <a href="#" class="btn btn-secondary">Ver API</a>
+                </div>
+                <div class="doc-card">
+                    <h3>Arquitectura</h3>
+                    <p>Explorar la arquitectura y componentes de la aplicación.
+                    </p>
+                    <a href="#" class="btn btn-secondary">Ver Detalles</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="equipo" class="team">
+        <div class="container">
+            <h2 class="section-title">Nuestro Equipo</h2>
+            <div class="team-grid">
+                <div class="team-member">
+                    <div class="member-photo">
+                        <img src="images/team-1.png" alt="Miembro del equipo">
+                    </div>
+                    <h3>TecnoPulsar</h3>
+                    <p>Desarrollador Principal</p>
+                    <div class="social-links">
+                        <a href="https://github.com/tecnopulsar"><i
+                                class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+                <!-- Puedes agregar más miembros del equipo aquí -->
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <h2>App<span>Player</span></h2>
+                    <p>Una solución completa para la reproducción y gestión de
+                        contenido multimedia.</p>
+                </div>
+                <div class="footer-links">
+                    <h3>Enlaces Rápidos</h3>
+                    <ul>
+                        <li><a href="#inicio">Inicio</a></li>
+                        <li><a href="#caracteristicas">Características</a></li>
+                        <li><a href="#api">API</a></li>
+                        <li><a href="#documentacion">Documentación</a></li>
+                        <li><a href="#equipo">Equipo</a></li>
+                    </ul>
+                </div>
+                <div class="footer-contact">
+                    <h3>Contacto</h3>
+                    <p><i class="fas fa-envelope"></i> info@appplayer.com</p>
+                    <p><i class="fas fa-map-marker-alt"></i> Buenos Aires,
+                        Argentina</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 App Player. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+
+</html>
