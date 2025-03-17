@@ -9,7 +9,7 @@ export class WindowManager {
         this.vlcInitialized = false;
     }
 
-    createMainWindow(serverManager) {
+    createMainWindow() {
         this.mainWindow = new BrowserWindow({
             width: 800,
             height: 600,
@@ -24,9 +24,6 @@ export class WindowManager {
 
         // Manejar el cierre de la ventana
         this.mainWindow.on('closed', () => {
-            if (serverManager) {
-                serverManager.stopServer();
-            }
             // Detener VLC si está en ejecución
             this.closePlayerWindow();
             this.mainWindow = null;

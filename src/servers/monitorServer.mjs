@@ -262,7 +262,3 @@ class MonitorServer {
 }
 
 export default MonitorServer;
-
-// Instanciar y iniciar el servidor
-const monitorServer = new MonitorServer();
-monitorServer.start();

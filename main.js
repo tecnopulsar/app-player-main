@@ -3,38 +3,37 @@ import { app, ipcMain, BrowserWindow } from 'electron';
 import { exec } from 'child_process';
 import { fileURLToPath } from 'url';
 import path, { dirname, join } from 'path';
-import { ServerManager } from './src/lib/serverManager.js';
 import { WindowManager } from './src/windows/windowManager.js';
 import { VLCPlayer } from './src/lib/vlcPlayer.js';
 import { appConfig } from './src/config/appConfig.mjs';
-import { initializeServer, stopServer } from './src/servers/serverClient.mjs'; // Importar desde serverClient.js
+import { initializeServer, stopServer } from './src/servers/serverClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
 import express from 'express';
 import endpoints from './src/routes/endpoints.mjs';
 import vlcEndpoints from './src/routes/vlcEndpoints.mjs';
 import systemEndpoints from './src/routes/systemEndpoints.mjs';
 import cors from 'cors';
-import fileHandler from './src/routes/fileHandler.mjs'; // Importar el router de manejo de archivos
-import appEndpoints from './src/routes/appEndpoints.mjs'; // Importar el nuevo router
+import fileHandler from './src/routes/fileHandler.mjs';
+import appEndpoints from './src/routes/appEndpoints.mjs';
 import playlistUploadHandler from './src/routes/playlistUploadHandler.mjs';
 import os from 'os';
 import fs from 'fs/promises';
 import ControllerClient from './src/clients/controllerClient.mjs';
-import MonitorServer from './src/servers/monitorServer.mjs';
+
+// Deshabilitar la aceleración por hardware
+app.disableHardwareAcceleration();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Crear instancia de ServerManager con el puerto configurado
+// Configurar el puerto
 const port = appConfig.server.port || 3000;
-const serverManager = new ServerManager(port);
 const windowManager = new WindowManager();
 
 // Mantener una referencia global del objeto window
 let mainWindow;
 let vlcPlayer;
 let controllerClient;
-let monitorServer;
 
 // Función para obtener información de red
 function getNetworkInfo() {
@@ -112,6 +111,12 @@ async function createWindow() {
   try {
     await setupDirectories();
 
+    // Inicializar el cliente de controlador
+    console.log('\n=== Iniciando Cliente de Controlador ===');
+    controllerClient = new ControllerClient('http://localhost:3001');
+    controllerClient.connect();
+    console.log('=====================================\n');
+
     mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -126,12 +131,6 @@ async function createWindow() {
     if (!success) {
       console.error('Error al iniciar VLC');
     }
-
-    // Inicializar el cliente de controlador
-    console.log('\n=== Iniciando Cliente de Controlador ===');
-    controllerClient = new ControllerClient('http://localhost:3001');
-    controllerClient.connect();
-    console.log('=====================================\n');
 
     // Crear y configurar la aplicación Express
     const app = express();
@@ -188,8 +187,6 @@ async function createWindow() {
     sendLog(`Servidor Express corriendo en puerto ${port}`, 'info');
     sendLog(`Directorio de videos: ${path.join(__dirname, 'videos')}`, 'info');
     sendLog('VLC está funcionando correctamente', 'success');
-    sendLog('VLC está funcionando correctamente', 'success');
-    sendLog('VLC está funcionando correctamente', 'success');
 
   } catch (error) {
     console.error('Error en la inicialización:', error);
@@ -208,11 +205,6 @@ app.on('window-all-closed', () => {
   // Detener el servidor
   console.log('Deteniendo servidor web...');
   stopServer();
-
-  // Detener el servidor de monitoreo
-  if (monitorServer) {
-    monitorServer.stop();
-  }
 
   // Desconectar el cliente de controlador
   if (controllerClient) {

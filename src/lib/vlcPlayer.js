@@ -68,9 +68,7 @@ export class VLCPlayer {
 
             // Configuración de VLC
             const options = [
-                '--vout=gles2',
-                '--loop',                     // Reproducción en bucle
-                '--no-audio',                 // Sin audio por defecto
+                // '--vout=gles',                // Usar OpenGL ES para la salida de video (optimizado para Raspberry Pi)
                 '--no-video-title-show',      // No mostrar título del video
                 '--no-video-deco',            // Sin decoraciones de ventana
                 '--no-mouse-events',          // Sin eventos de mouse
@@ -78,6 +76,12 @@ export class VLCPlayer {
                 '--http-port=8080',           // Puerto HTTP
                 '--http-password=tecno',      // Contraseña HTTP
                 '--http-host=localhost',      // Host HTTP
+                '--loop',                     // Reproducción en bucle
+                '--no-audio',                 // Sin audio por defecto
+                '--no-osd',                   // Deshabilitar OSD (On-Screen Display)
+                '--no-snapshot-preview',      // Deshabilitar vista previa de capturas de pantalla
+                '--no-stats',                 // Deshabilitar estadísticas en pantalla
+                '--no-sub-autodetect-file',   // Deshabilitar detección automática de subtítulos                // Deshabilitar video (si solo necesitas audio)
                 this.playlistPath             // Ruta de la playlist
             ];
 

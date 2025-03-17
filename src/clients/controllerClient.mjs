@@ -50,7 +50,6 @@ class ControllerClient {
         try {
             console.log('\n=== Iniciando Conexión con Controlador ===');
             console.log(`URL del servidor: ${this.serverUrl}`);
-            console.log(`URL del monitor: ${this.monitorUrl}`);
 
             // Conectar al servidor controlador
             this.socket = io(this.serverUrl, {
