@@ -68,10 +68,11 @@ export class VLCPlayer {
 
             // Configuración de VLC
             const options = [
-                // '--vout=gles',                // Usar OpenGL ES para la salida de video (optimizado para Raspberry Pi)
+                '--vout=gles',                // Usar OpenGL ES para la salida de video (optimizado para Raspberry Pi)
                 '--no-video-title-show',      // No mostrar título del video
-                '--no-video-deco',            // Sin decoraciones de ventana
-                '--no-mouse-events',          // Sin eventos de mouse
+                '--no-video-deco',
+                '--fullscreen',
+                // '--no-mouse-events',          // Sin eventos de mouse
                 '--intf=http',                // Interfaz HTTP para control
                 '--http-port=8080',           // Puerto HTTP
                 '--http-password=tecno',      // Contraseña HTTP
