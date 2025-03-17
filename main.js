@@ -19,6 +19,8 @@ import appEndpoints from './src/routes/appEndpoints.mjs'; // Importar el nuevo r
 import playlistUploadHandler from './src/routes/playlistUploadHandler.mjs';
 import os from 'os';
 import fs from 'fs/promises';
+import ControllerClient from './src/clients/controllerClient.mjs';
+import MonitorServer from './src/servers/monitorServer.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -31,6 +33,8 @@ const windowManager = new WindowManager();
 // Mantener una referencia global del objeto window
 let mainWindow;
 let vlcPlayer;
+let controllerClient;
+let monitorServer;
 
 // Función para obtener información de red
 function getNetworkInfo() {
@@ -123,6 +127,12 @@ async function createWindow() {
       console.error('Error al iniciar VLC');
     }
 
+    // Inicializar el cliente de controlador
+    console.log('\n=== Iniciando Cliente de Controlador ===');
+    controllerClient = new ControllerClient('http://localhost:3001');
+    controllerClient.connect();
+    console.log('=====================================\n');
+
     // Crear y configurar la aplicación Express
     const app = express();
 
@@ -197,12 +207,22 @@ app.whenReady().then(createWindow);
 app.on('window-all-closed', () => {
   // Detener el servidor
   console.log('Deteniendo servidor web...');
-  stopServer(); // Detener el servidor desde serverClient.js
+  stopServer();
+
+  // Detener el servidor de monitoreo
+  if (monitorServer) {
+    monitorServer.stop();
+  }
+
+  // Desconectar el cliente de controlador
+  if (controllerClient) {
+    controllerClient.disconnect();
+  }
 
   if (vlcPlayer) {
     vlcPlayer.stop();
   }
-  windowManager.closePlayerWindow(); // Asegurar que VLC se cierre
+  windowManager.closePlayerWindow();
   if (process.platform !== 'darwin') {
     app.quit();
   }
