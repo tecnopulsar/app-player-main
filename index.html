@@ -173,6 +173,46 @@
       color: #7f8c8d;
       font-size: 14px;
     }
+
+    /* Estilos para VLC Status */
+    .vlc-status,
+    .playlist-info {
+      margin-top: 10px;
+    }
+
+    .vlc-status-item,
+    .playlist-info-item {
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .playlist-files-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 10px 0;
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: 4px;
+    }
+
+    .playlist-files-list li {
+      padding: 6px 10px;
+      border-bottom: 1px solid #eee;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .playlist-files-list li:last-child {
+      border-bottom: none;
+    }
+
+    .current-playing {
+      background-color: rgba(39, 174, 96, 0.1);
+      color: var(--success-color);
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -199,6 +239,42 @@
           <h3>Estado del Sistema</h3>
           <div class="metric-value">🟢</div>
           <div class="metric-label">Sistema Operativo</div>
+        </div>
+      </div>
+
+      <!-- Nueva sección para VLC -->
+      <div class="info-card" id="vlc-status-card">
+        <h2>Estado de VLC</h2>
+        <div class="vlc-status">
+          <div class="vlc-status-item">
+            <strong>Estado:</strong> <span id="vlc-state">Cargando...</span>
+          </div>
+          <div class="vlc-status-item">
+            <strong>Archivo actual:</strong> <span
+              id="vlc-current-item">-</span>
+          </div>
+          <div class="vlc-status-item">
+            <strong>Duración:</strong> <span id="vlc-duration">-</span>
+          </div>
+          <div class="vlc-status-item">
+            <strong>Tiempo actual:</strong> <span id="vlc-time">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nueva sección para la playlist -->
+      <div class="info-card" id="playlist-info-card">
+        <h2>Playlist Actual</h2>
+        <div class="playlist-info">
+          <div class="playlist-info-item">
+            <strong>Nombre:</strong> <span id="playlist-name">Cargando...</span>
+          </div>
+          <div class="playlist-info-item">
+            <strong>Archivos:</strong> <span id="playlist-total-items">-</span>
+          </div>
+          <div class="playlist-files" id="playlist-files">
+            <!-- Se llenará dinámicamente -->
+          </div>
         </div>
       </div>
 
@@ -272,6 +348,82 @@
     addLog('Sistema iniciado correctamente', 'success');
     addLog(`Servidor web iniciado en el puerto ${window.port}`, 'info');
     addLog(`Directorio de videos configurado: ${window.directorioVideos}`, 'info');
+  </script>
+
+  <script>
+    // Función para formatear tiempo (segundos a MM:SS)
+    function formatTime(seconds) {
+      if (!seconds || isNaN(seconds)) return '00:00';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // Función para actualizar el estado de VLC en la UI
+    function updateVLCStatusUI(status, playlist) {
+      // Actualizar estado
+      const stateElement = document.getElementById('vlc-state');
+      const currentItemElement = document.getElementById('vlc-current-item');
+      const durationElement = document.getElementById('vlc-duration');
+      const timeElement = document.getElementById('vlc-time');
+
+      if (status.connected) {
+        stateElement.textContent = status.playing ? '▶️ Reproduciendo' :
+          status.paused ? '⏸️ Pausado' : '⏹️ Detenido';
+        stateElement.className = status.playing ? 'status-active' : 'status-inactive';
+
+        currentItemElement.textContent = status.currentItem || 'Ninguno';
+        durationElement.textContent = formatTime(status.length);
+        timeElement.textContent = formatTime(status.time);
+      } else {
+        stateElement.textContent = '❌ Desconectado';
+        stateElement.className = 'status-inactive';
+        currentItemElement.textContent = '-';
+        durationElement.textContent = '-';
+        timeElement.textContent = '-';
+      }
+
+      // Actualizar información de playlist
+      const playlistNameElement = document.getElementById('playlist-name');
+      const playlistTotalItemsElement = document.getElementById('playlist-total-items');
+      const playlistFilesElement = document.getElementById('playlist-files');
+
+      playlistNameElement.textContent = playlist.name;
+      playlistTotalItemsElement.textContent = playlist.totalItems;
+
+      // Mostrar archivos de la playlist
+      playlistFilesElement.innerHTML = '';
+      if (playlist.files && playlist.files.length > 0) {
+        const ul = document.createElement('ul');
+        ul.className = 'playlist-files-list';
+
+        playlist.files.forEach(file => {
+          const li = document.createElement('li');
+          li.textContent = file;
+          // Resaltar el archivo que está reproduciéndose actualmente
+          if (file === status.currentItem) {
+            li.className = 'current-playing';
+          }
+          ul.appendChild(li);
+        });
+
+        playlistFilesElement.appendChild(ul);
+      } else {
+        playlistFilesElement.innerHTML = '<p>No hay archivos en la playlist</p>';
+      }
+    }
+
+    // Datos iniciales de VLC y playlist
+    const vlcStatus = JSON.parse('{{vlcStatus}}');
+    const playlistInfo = JSON.parse('{{playlistInfo}}');
+
+    // Actualizar la UI con los datos iniciales
+    updateVLCStatusUI(vlcStatus, playlistInfo);
+
+    // Escuchar actualizaciones en tiempo real
+    ipcRenderer.on('vlc-status-update', (event, data) => {
+      updateVLCStatusUI(data.vlcStatus, data.playlistInfo);
+    });
   </script>
 </body>
 

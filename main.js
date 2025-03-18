@@ -14,6 +14,7 @@ import cors from 'cors';
 import os from 'os';
 import fs from 'fs/promises';
 import ControllerClient from './src/clients/controllerClient.mjs';
+import { getVLCStatus, getPlaylistInfo } from './src/utils/vlcStatus.js';
 
 // Deshabilitar la aceleración por hardware
 app.disableHardwareAcceleration();
@@ -139,11 +140,17 @@ async function createWindow() {
     // Ruta principal para el dashboard
     app.get('/', async (req, res) => {
       try {
+        // Obtener el estado de VLC y la información de la playlist
+        const vlcStatus = await getVLCStatus();
+        const playlistInfo = await getPlaylistInfo();
+
         const templatePath = path.join(__dirname, 'index.html');
         const data = {
           port: port,
           directorioVideos: path.join(__dirname, 'videos'),
           networkInfo: JSON.stringify(getNetworkInfo()),
+          vlcStatus: JSON.stringify(vlcStatus),
+          playlistInfo: JSON.stringify(playlistInfo),
           year: new Date().getFullYear()
         };
 
@@ -177,6 +184,21 @@ async function createWindow() {
     sendLog(`Servidor Express corriendo en puerto ${port}`, 'info');
     sendLog(`Directorio de videos: ${path.join(__dirname, 'videos')}`, 'info');
     sendLog('VLC está funcionando correctamente', 'success');
+
+    // Iniciar un intervalo para actualizar el estado de VLC en el frontend
+    const updateVLCStatusInterval = setInterval(async () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        try {
+          const vlcStatus = await getVLCStatus();
+          const playlistInfo = await getPlaylistInfo();
+          mainWindow.webContents.send('vlc-status-update', { vlcStatus, playlistInfo });
+        } catch (error) {
+          console.error('Error al actualizar estado de VLC:', error);
+        }
+      } else {
+        clearInterval(updateVLCStatusInterval);
+      }
+    }, 5000); // Actualizar cada 5 segundos
 
   } catch (error) {
     console.error('Error en la inicialización:', error);
