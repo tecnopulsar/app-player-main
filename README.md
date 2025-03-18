@@ -50,100 +50,54 @@ app-player/
 └── preload.js               # Script de precarga de Electron
 ```
 
-## 🔧 Requisitos del Sistema
+### Rutas (src/routes)
+La aplicación utiliza un sistema modular de rutas organizado mediante un archivo de barril (`index.mjs`):
 
-- Node.js (v14 o superior)
-- Python 3
-- VLC Media Player
-- Raspberry Pi (recomendado)
-- Sistema operativo Linux (probado en Raspberry Pi OS)
+- `endpoints.mjs`: Rutas principales y generales de la aplicación
+- `vlcEndpoints.mjs`: Endpoints relacionados con el control de VLC
+- `systemEndpoints.mjs`: Endpoints para operaciones del sistema
+- `fileHandler.mjs`: Manejo de archivos y operaciones relacionadas
+- `appEndpoints.mjs`: Endpoints específicos de la aplicación
+- `playlistUploadHandler.mjs`: Manejo de carga y gestión de playlists
 
-## 🚀 Instalación
+Cada archivo de ruta exporta su router usando `export default`, y el archivo `index.mjs` los importa y combina en un único router para simplificar el uso en la aplicación.
 
-1. Clonar el repositorio:
-```bash
-git clone https://github.com/tecnopulsar/app-player-wetechar.git
-cd app-player-wetechar
+### Uso de Rutas
+
+```javascript
+// Importar todas las rutas desde el archivo de barril
+import { endpoints } from './src/routes/index.mjs';
+
+// Configurar rutas en Express - Una sola línea configura todas las rutas
+app.use('/api', endpoints);
 ```
 
-2. Instalar dependencias:
-```bash
-npm install
-```
+## Estructura de Rutas API
 
-3. Iniciar la aplicación:
-```bash
-npm start
-```
+La aplicación expone las siguientes rutas API:
 
-## 📚 Documentación
+### Rutas del Sistema (`/api/system`)
+- `GET /api/system/info`: Obtiene información del sistema
+- `GET /api/system/network`: Obtiene información de red
+- `GET /api/system/status`: Obtiene estado del sistema
 
-La documentación completa del proyecto se encuentra en la carpeta `/docs`:
+### Rutas de Playlist (`/api/playlist`)
+- `POST /api/playlist/upload`: Sube una nueva playlist
+- `GET /api/playlist/list`: Lista las playlists disponibles
+- `DELETE /api/playlist/:id`: Elimina una playlist
 
-- **estructura_proyecto.md**: Detalles sobre la estructura de carpetas y archivos
-- **api_endpoints.md**: Documentación de todos los endpoints de la API
-- **informe_aplicacion.md**: Informe completo sobre la aplicación
-- **vlc_control.md**: Documentación de la integración con VLC
-- **system_control.md**: Documentación del control del sistema
-- **postman_guide.md**: Guía para usar Postman con esta API
-- **postman_collection.json**: Colección de Postman para probar la API
+### Rutas de VLC (`/api/vlc`)
+- `GET /api/vlc/status`: Obtiene estado de VLC
+- `POST /api/vlc/control`: Controla la reproducción
+- `GET /api/vlc/playlist`: Obtiene la playlist actual
 
-## 🌐 API REST
+### Rutas de Aplicación (`/api/app`)
+- `GET /api/app/version`: Obtiene versión de la aplicación
+- `GET /api/app/config`: Obtiene configuración
 
-La aplicación proporciona una API REST para controlar todas sus funcionalidades de forma remota. Algunos de los endpoints principales son:
+### Rutas de Archivos (`/api/files`)
+- `GET /api/files/list`: Lista archivos disponibles
+- `POST /api/files/upload`: Sube archivos
+- `DELETE /api/files/:id`: Elimina archivos
 
-- **Control de VLC**: `/api/vlc/play`, `/api/vlc/pause`, `/api/vlc/stop`
-- **Información del Sistema**: `/api/system/info`, `/api/system/resources`
-- **Control del Sistema**: `/api/system/reboot`
-- **Estado General**: `/status`
-
-Para más detalles, consulta la documentación de la API en `/docs/api_endpoints.md`.
-
-## 📝 Funcionalidades Implementadas
-
-### ✅ Completado
-- Estructura base del proyecto
-- Gestión de servidor Express
-- Sistema de monitoreo de red
-- Gestión de ventanas
-- Visualización de estado de conexión
-- Integración con VLC Media Player
-- API REST para control remoto
-- Monitoreo de recursos del sistema
-
-### 🚧 En Progreso
-- Sistema de reproducción de contenido multimedia avanzado
-- Interfaz de usuario mejorada
-- Soporte para listas de reproducción personalizadas
-
-### 📋 Pendiente
-- Sistema de autenticación
-- Gestión de contenido remoto
-- Sistema de logs avanzado
-- Tests automatizados
-- Soporte para streaming de servicios en línea
-
-## 🤝 Contribución
-
-Las contribuciones son bienvenidas. Por favor, asegúrate de:
-
-1. Hacer fork del repositorio
-2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit de tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE.md](LICENSE.md) para más detalles.
-
-## 👥 Autores
-
-- **TecnoPulsar** - *Trabajo inicial* - [tecnopulsar](https://github.com/tecnopulsar)
-
-## 🙏 Agradecimientos
-
-- Electron.js Team
-- Raspberry Pi Foundation
-- Comunidad de desarrolladores de Node.js
-- Equipo de VideoLAN (VLC) 
+## 🔧 Requisitos del

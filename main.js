@@ -9,13 +9,8 @@ import { appConfig } from './src/config/appConfig.mjs';
 import { initializeServer, stopServer } from './src/servers/serverClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
 import express from 'express';
-import endpoints from './src/routes/endpoints.mjs';
-import vlcEndpoints from './src/routes/vlcEndpoints.mjs';
-import systemEndpoints from './src/routes/systemEndpoints.mjs';
+import { endpoints } from './src/routes/index.mjs';
 import cors from 'cors';
-import fileHandler from './src/routes/fileHandler.mjs';
-import appEndpoints from './src/routes/appEndpoints.mjs';
-import playlistUploadHandler from './src/routes/playlistUploadHandler.mjs';
 import os from 'os';
 import fs from 'fs/promises';
 import ControllerClient from './src/clients/controllerClient.mjs';
@@ -162,11 +157,6 @@ async function createWindow() {
 
     // Configuración de rutas API
     app.use('/api', endpoints);
-    app.use('/api/app', appEndpoints);
-    app.use('/api/system', systemEndpoints);
-    app.use('/api/files', fileHandler);
-    app.use('/api/playlist', playlistUploadHandler);
-    app.use('/api/vlc', vlcEndpoints);
 
     // Iniciar el servidor con la app configurada
     await initializeServer(port, app);
