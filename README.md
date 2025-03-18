@@ -100,4 +100,27 @@ La aplicación expone las siguientes rutas API:
 - `POST /api/files/upload`: Sube archivos
 - `DELETE /api/files/:id`: Elimina archivos
 
+## Estructura del Proyecto
+
+### Utilidades (src/utils)
+La aplicación utiliza un sistema de utilidades para centralizar funcionalidades comunes:
+
+- **networkUtils.js**: Funciones relacionadas con la obtención de información de red
+  - `getBasicNetworkInfo()`: Información básica de interfaces de red
+  - `getDetailedNetworkInfo()`: Información detallada mediante script bash
+  - `getLocalIP()`: Obtiene la IP local principal
+  - `getMACAddress()`: Obtiene la dirección MAC principal
+
+- **templateUtils.js**: Funciones para el manejo de plantillas
+  - `renderTemplate()`: Renderiza plantillas HTML con variables
+
+- **logUtils.js**: Sistema centralizado de logging
+  - `initLogs()`: Inicializa el sistema de logs
+  - `sendLog()`: Envía mensajes de log al frontend
+  - `restoreLogs()`: Restaura las funciones originales de console
+
+- **vlcStatus.js**: Utilidades para consultar el estado de VLC
+  - `getVLCStatus()`: Obtiene el estado actual del reproductor
+  - `getPlaylistInfo()`: Obtiene información sobre la playlist actual
+
 ## 🔧 Requisitos del

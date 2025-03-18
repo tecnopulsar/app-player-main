@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
-import os from 'os';
 import { getVLCStatus, getPlaylistInfo } from '../utils/vlcStatus.js';
+import { getLocalIP, getMACAddress } from '../utils/networkUtils.js';
 
 class ControllerClient {
     constructor(serverUrl, monitorUrl = 'http://localhost:3002') {
@@ -11,8 +11,8 @@ class ControllerClient {
         this.deviceInfo = {
             id: null,
             name: null,
-            ip: this.getLocalIP(),
-            mac: this.getMACAddress(),
+            ip: getLocalIP(),
+            mac: getMACAddress(),
             status: 'active',
             vlcStatus: null,
             playlistInfo: null,
@@ -23,30 +23,6 @@ class ControllerClient {
         this.lastHeartbeatTime = Date.now();
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
-    }
-
-    getLocalIP() {
-        const interfaces = os.networkInterfaces();
-        for (const name of Object.keys(interfaces)) {
-            for (const iface of interfaces[name]) {
-                if (iface.internal === false && iface.family === 'IPv4') {
-                    return iface.address;
-                }
-            }
-        }
-        return '127.0.0.1';
-    }
-
-    getMACAddress() {
-        const interfaces = os.networkInterfaces();
-        for (const name of Object.keys(interfaces)) {
-            for (const iface of interfaces[name]) {
-                if (iface.internal === false && iface.family === 'IPv4') {
-                    return iface.mac;
-                }
-            }
-        }
-        return '00:00:00:00:00:00';
     }
 
     connect() {

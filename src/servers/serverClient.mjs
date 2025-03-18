@@ -3,7 +3,7 @@ import express from 'express';
 import { createServer } from 'node:http';
 import cors from 'cors';
 import endpoints from '../routes/endpoints.mjs';
-import { getNetworkInfo } from './networkInfo.mjs';
+import { getDetailedNetworkInfo } from '../utils/networkUtils.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { appConfig } from '../config/appConfig.mjs';
@@ -36,7 +36,7 @@ function createApp() {
 async function getAllNetworkInfo() {
   try {
     // Obtener información de red
-    networkInfo = await getNetworkInfo();
+    networkInfo = await getDetailedNetworkInfo();
     if (!networkInfo) {
       throw new Error('No se pudo obtener la información de red');
     }

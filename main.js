@@ -11,10 +11,11 @@ import { setupDirectories } from './src/utils/setupDirectories.js';
 import express from 'express';
 import { endpoints } from './src/routes/index.mjs';
 import cors from 'cors';
-import os from 'os';
-import fs from 'fs/promises';
 import ControllerClient from './src/clients/controllerClient.mjs';
 import { getVLCStatus, getPlaylistInfo } from './src/utils/vlcStatus.js';
+import { getBasicNetworkInfo } from './src/utils/networkUtils.js';
+import { renderTemplate } from './src/utils/templateUtils.js';
+import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.js';
 
 // Deshabilitar la aceleración por hardware
 app.disableHardwareAcceleration();
@@ -33,78 +34,6 @@ let controllerClient;
 
 // Hacer la ventana global para poder acceder a ella desde el controllerClient
 global.mainWindow = null;
-
-// Función para obtener información de red
-function getNetworkInfo() {
-  const interfaces = os.networkInterfaces();
-  const networkInfo = {};
-
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        networkInfo[name] = {
-          ip: iface.address,
-          mac: iface.mac
-        };
-      }
-    }
-  }
-
-  return networkInfo;
-}
-
-// Función para enviar logs a la ventana de renderizado
-function sendLog(message, type = 'info') {
-  if (mainWindow) {
-    mainWindow.webContents.send('log', { message, type });
-  }
-}
-
-// Interceptar logs de la consola
-const originalConsole = {
-  log: console.log,
-  error: console.error,
-  warn: console.warn,
-  info: console.info
-};
-
-console.log = (...args) => {
-  originalConsole.log(...args);
-  sendLog(args.join(' '), 'info');
-};
-
-console.error = (...args) => {
-  originalConsole.error(...args);
-  sendLog(args.join(' '), 'error');
-};
-
-console.warn = (...args) => {
-  originalConsole.warn(...args);
-  sendLog(args.join(' '), 'warning');
-};
-
-console.info = (...args) => {
-  originalConsole.info(...args);
-  sendLog(args.join(' '), 'info');
-};
-
-// Función para renderizar plantillas
-async function renderTemplate(templatePath, data) {
-  try {
-    let template = await fs.readFile(templatePath, 'utf-8');
-
-    // Reemplazar todas las variables en el template
-    for (const [key, value] of Object.entries(data)) {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      template = template.replace(regex, value);
-    }
-
-    return template;
-  } catch (error) {
-    console.error('Error al renderizar template:', error);
-    throw error;
-  }
-}
 
 async function createWindow() {
   try {
@@ -127,6 +56,9 @@ async function createWindow() {
 
     // Hacer la ventana accesible globalmente
     global.mainWindow = mainWindow;
+
+    // Inicializar el sistema de logs
+    initLogs(mainWindow);
 
     vlcPlayer = new VLCPlayer();
     const success = await vlcPlayer.start();
@@ -154,7 +86,7 @@ async function createWindow() {
         const data = {
           port: port,
           directorioVideos: path.join(__dirname, 'videos'),
-          networkInfo: JSON.stringify(getNetworkInfo()),
+          networkInfo: JSON.stringify(getBasicNetworkInfo()),
           vlcStatus: JSON.stringify(vlcStatus),
           playlistInfo: JSON.stringify(playlistInfo),
           year: new Date().getFullYear()
@@ -220,6 +152,9 @@ app.whenReady().then(createWindow);
 
 // Salir cuando todas las ventanas estén cerradas
 app.on('window-all-closed', () => {
+  // Restaurar las funciones originales del console
+  restoreLogs();
+
   // Detener el servidor
   console.log('Deteniendo servidor web...');
   stopServer();
