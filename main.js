@@ -31,6 +31,9 @@ let mainWindow;
 let vlcPlayer;
 let controllerClient;
 
+// Hacer la ventana global para poder acceder a ella desde el controllerClient
+global.mainWindow = null;
+
 // Función para obtener información de red
 function getNetworkInfo() {
   const interfaces = os.networkInterfaces();
@@ -121,6 +124,9 @@ async function createWindow() {
         contextIsolation: false
       }
     });
+
+    // Hacer la ventana accesible globalmente
+    global.mainWindow = mainWindow;
 
     vlcPlayer = new VLCPlayer();
     const success = await vlcPlayer.start();
@@ -304,5 +310,74 @@ ipcMain.on('some-event', (event) => {
     mainWindow.webContents.send('response-event', 'data');
   } else {
     console.error('La ventana principal no está disponible');
+  }
+});
+
+// Manejar eventos de control remoto
+ipcMain.on('remote-control', async (event, { action, data }) => {
+  console.log(`Recibido evento de control remoto: ${action}`, data);
+
+  try {
+    switch (action) {
+      case 'PLAY':
+        if (vlcPlayer) {
+          const success = await vlcPlayer.start();
+          if (!success && mainWindow) {
+            mainWindow.webContents.send('player-error', 'Error al iniciar el reproductor');
+          }
+        }
+        break;
+      case 'PAUSE':
+        // Enviar comando de pausa a VLC
+        if (vlcPlayer) {
+          // Esta función debe implementarse en VLCPlayer
+          vlcPlayer.pause();
+        }
+        break;
+      case 'STOP':
+        if (vlcPlayer) {
+          vlcPlayer.stop();
+        }
+        break;
+      case 'NEXT':
+        // Enviar comando de siguiente a VLC
+        if (vlcPlayer) {
+          // Esta función debe implementarse en VLCPlayer
+          vlcPlayer.next();
+        }
+        break;
+      case 'PREVIOUS':
+        // Enviar comando de anterior a VLC
+        if (vlcPlayer) {
+          // Esta función debe implementarse en VLCPlayer
+          vlcPlayer.previous();
+        }
+        break;
+      case 'VOLUME_UP':
+        // Enviar comando de subir volumen a VLC
+        if (vlcPlayer) {
+          // Esta función debe implementarse en VLCPlayer
+          vlcPlayer.volumeUp();
+        }
+        break;
+      case 'VOLUME_DOWN':
+        // Enviar comando de bajar volumen a VLC
+        if (vlcPlayer) {
+          // Esta función debe implementarse en VLCPlayer
+          vlcPlayer.volumeDown();
+        }
+        break;
+      case 'MUTE':
+      case 'UNMUTE':
+        if (vlcPlayer) {
+          vlcPlayer.toggleAudio();
+        }
+        break;
+      default:
+        console.warn(`Acción no reconocida: ${action}`);
+    }
+  } catch (error) {
+    console.error(`Error al procesar acción ${action}:`, error);
+    mainWindow?.webContents.send('player-error', `Error: ${error.message}`);
   }
 });

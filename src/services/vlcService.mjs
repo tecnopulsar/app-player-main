@@ -35,5 +35,12 @@ export const vlcCommands = {
     previous: 'pl_previous',
     fullscreen: 'fullscreen',
     toggleAudio: 'volume',
-    getStatus: 'status'
+    getStatus: 'status',
+    // Nuevos comandos
+    seek: 'seek',
+    aspectRatio: 'aspectratio',
+    rate: 'rate', // Velocidad de reproducción
+    random: 'pl_random',
+    loop: 'pl_loop',
+    repeat: 'pl_repeat'
 };

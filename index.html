@@ -425,6 +425,31 @@
       updateVLCStatusUI(data.vlcStatus, data.playlistInfo);
     });
   </script>
+
+  <script>
+    // Escuchar eventos de control remoto
+    ipcRenderer.on('remote-control', (event, { action, data }) => {
+      const actionMessages = {
+        'PLAY': '▶️ Reproducir',
+        'PAUSE': '⏸️ Pausar',
+        'STOP': '⏹️ Detener',
+        'NEXT': '⏭️ Siguiente',
+        'PREVIOUS': '⏮️ Anterior',
+        'VOLUME_UP': '🔊 Subir volumen',
+        'VOLUME_DOWN': '🔉 Bajar volumen',
+        'MUTE': '🔇 Silenciar',
+        'UNMUTE': '🔈 Activar audio'
+      };
+
+      const message = actionMessages[action] || action;
+      addLog(`Control remoto: ${message}`, 'info');
+    });
+
+    // Escuchar errores del reproductor
+    ipcRenderer.on('player-error', (event, message) => {
+      addLog(`Error del reproductor: ${message}`, 'error');
+    });
+  </script>
 </body>
 
 </html>

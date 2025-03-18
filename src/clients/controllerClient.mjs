@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client';
 import os from 'os';
+import { getVLCStatus, getPlaylistInfo } from '../utils/vlcStatus.js';
 
 class ControllerClient {
     constructor(serverUrl, monitorUrl = 'http://localhost:3002') {
@@ -13,6 +14,8 @@ class ControllerClient {
             ip: this.getLocalIP(),
             mac: this.getMACAddress(),
             status: 'active',
+            vlcStatus: null,
+            playlistInfo: null,
             lastSeen: new Date().toISOString()
         };
         this.heartbeatInterval = 25000; // 25 segundos
@@ -115,49 +118,58 @@ class ControllerClient {
         });
 
         // Eventos de control
-        this.socket.on('PLAY', () => {
-            console.log('Evento PLAY recibido');
-            // Implementar lógica de reproducción
+        this.socket.on('PLAY', (data) => {
+            console.log('Evento PLAY recibido', data);
+            // Enviar evento a la aplicación principal
+            global.mainWindow?.webContents.send('remote-control', { action: 'PLAY', data });
         });
 
-        this.socket.on('PAUSE', () => {
-            console.log('Evento PAUSE recibido');
-            // Implementar lógica de pausa
+        this.socket.on('PAUSE', (data) => {
+            console.log('Evento PAUSE recibido', data);
+            // Enviar evento a la aplicación principal
+            global.mainWindow?.webContents.send('remote-control', { action: 'PAUSE', data });
         });
 
-        this.socket.on('STOP', () => {
-            console.log('Evento STOP recibido');
-            // Implementar lógica de detención
+        this.socket.on('STOP', (data) => {
+            console.log('Evento STOP recibido', data);
+            // Enviar evento a la aplicación principal
+            global.mainWindow?.webContents.send('remote-control', { action: 'STOP', data });
         });
 
-        this.socket.on('NEXT', () => {
-            console.log('Evento NEXT recibido');
-            // Implementar lógica de siguiente elemento
+        this.socket.on('NEXT', (data) => {
+            console.log('Evento NEXT recibido', data);
+            // Enviar evento a la aplicación principal
+            global.mainWindow?.webContents.send('remote-control', { action: 'NEXT', data });
         });
 
-        this.socket.on('PREVIOUS', () => {
-            console.log('Evento PREVIOUS recibido');
-            // Implementar lógica de elemento anterior
+        this.socket.on('PREVIOUS', (data) => {
+            console.log('Evento PREVIOUS recibido', data);
+            // Enviar evento a la aplicación principal
+            global.mainWindow?.webContents.send('remote-control', { action: 'PREVIOUS', data });
         });
 
-        this.socket.on('VOLUME_UP', () => {
-            console.log('Evento VOLUME_UP recibido');
-            // Implementar lógica de subir volumen
+        this.socket.on('VOLUME_UP', (data) => {
+            console.log('Evento VOLUME_UP recibido', data);
+            // Enviar evento a la aplicación principal
+            global.mainWindow?.webContents.send('remote-control', { action: 'VOLUME_UP', data });
         });
 
-        this.socket.on('VOLUME_DOWN', () => {
-            console.log('Evento VOLUME_DOWN recibido');
-            // Implementar lógica de bajar volumen
+        this.socket.on('VOLUME_DOWN', (data) => {
+            console.log('Evento VOLUME_DOWN recibido', data);
+            // Enviar evento a la aplicación principal
+            global.mainWindow?.webContents.send('remote-control', { action: 'VOLUME_DOWN', data });
         });
 
-        this.socket.on('MUTE', () => {
-            console.log('Evento MUTE recibido');
-            // Implementar lógica de silencio
+        this.socket.on('MUTE', (data) => {
+            console.log('Evento MUTE recibido', data);
+            // Enviar evento a la aplicación principal
+            global.mainWindow?.webContents.send('remote-control', { action: 'MUTE', data });
         });
 
-        this.socket.on('UNMUTE', () => {
-            console.log('Evento UNMUTE recibido');
-            // Implementar lógica de quitar silencio
+        this.socket.on('UNMUTE', (data) => {
+            console.log('Evento UNMUTE recibido', data);
+            // Enviar evento a la aplicación principal
+            global.mainWindow?.webContents.send('remote-control', { action: 'UNMUTE', data });
         });
     }
 
@@ -184,13 +196,26 @@ class ControllerClient {
         });
     }
 
-    startHeartbeat() {
+    async startHeartbeat() {
         console.log('Iniciando sistema de heartbeat...');
-        this.intervalId = setInterval(() => {
+        this.intervalId = setInterval(async () => {
             if (this.socket && this.socket.connected) {
                 const now = Date.now();
                 console.log(`\nTiempo desde último heartbeat: ${now - this.lastHeartbeatTime}ms`);
                 this.lastHeartbeatTime = now;
+
+                // Obtener el estado actual de VLC
+                try {
+                    this.deviceInfo.vlcStatus = await getVLCStatus();
+                    this.deviceInfo.playlistInfo = await getPlaylistInfo();
+                } catch (error) {
+                    console.error('Error al obtener estado de VLC:', error);
+                    this.deviceInfo.vlcStatus = {
+                        status: 'error',
+                        connected: false,
+                        error: error.message
+                    };
+                }
 
                 this.deviceInfo.lastSeen = new Date().toISOString();
                 const heartbeatData = {
@@ -199,7 +224,11 @@ class ControllerClient {
                     status: true,
                     lastSeen: this.deviceInfo.lastSeen,
                     ip: this.deviceInfo.ip,
-                    mac: this.deviceInfo.mac
+                    mac: this.deviceInfo.mac,
+                    vlc: {
+                        status: this.deviceInfo.vlcStatus,
+                        playlist: this.deviceInfo.playlistInfo
+                    }
                 };
 
                 // Enviar heartbeat al servidor controlador
@@ -220,6 +249,10 @@ class ControllerClient {
                 console.log(`IP: ${heartbeatData.ip}`);
                 console.log(`MAC: ${heartbeatData.mac}`);
                 console.log(`Estado: ${heartbeatData.status ? 'Activo' : 'Inactivo'}`);
+                console.log(`VLC Estado: ${heartbeatData.vlc.status.status}`);
+                console.log(`VLC Reproduciendo: ${heartbeatData.vlc.status.playing ? 'Sí' : 'No'}`);
+                console.log(`Archivo actual: ${heartbeatData.vlc.status.currentItem || 'Ninguno'}`);
+                console.log(`Playlist: ${heartbeatData.vlc.playlist.name} (${heartbeatData.vlc.playlist.totalItems} archivos)`);
                 console.log(`Última vez visto: ${heartbeatData.lastSeen}`);
                 console.log(`Socket controlador: ${this.socket.connected}`);
                 console.log(`Socket monitoreo: ${this.monitorSocket?.connected || false}`);

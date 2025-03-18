@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
 import { appConfig } from '../config/appConfig.mjs';
+import { vlcRequest, vlcCommands } from '../services/vlcService.mjs';
 
 export class VLCPlayer {
     constructor() {
@@ -166,6 +167,63 @@ export class VLCPlayer {
             }
             this.process.kill();
             this.process = null;
+        }
+    }
+
+    async pause() {
+        try {
+            await vlcRequest(vlcCommands.pause);
+            console.log('VLC: Orden de pausa enviada');
+            return true;
+        } catch (error) {
+            console.error('Error al enviar orden de pausa a VLC:', error);
+            return false;
+        }
+    }
+
+    async next() {
+        try {
+            await vlcRequest(vlcCommands.next);
+            console.log('VLC: Orden de siguiente enviada');
+            return true;
+        } catch (error) {
+            console.error('Error al enviar orden de siguiente a VLC:', error);
+            return false;
+        }
+    }
+
+    async previous() {
+        try {
+            await vlcRequest(vlcCommands.previous);
+            console.log('VLC: Orden de anterior enviada');
+            return true;
+        } catch (error) {
+            console.error('Error al enviar orden de anterior a VLC:', error);
+            return false;
+        }
+    }
+
+    async volumeUp() {
+        try {
+            // Aumentar el volumen un 10%
+            await vlcRequest(`${vlcCommands.toggleAudio}&val=+10`);
+            console.log('VLC: Orden de subir volumen enviada');
+            return true;
+        } catch (error) {
+            console.error('Error al enviar orden de subir volumen a VLC:', error);
+            return false;
+        }
+    }
+
+    async volumeDown() {
+        try {
+            // Disminuir el volumen un 10%
+            await vlcRequest(`${vlcCommands.toggleAudio}&val=-10`);
+            console.log('VLC: Orden de bajar volumen enviada');
+            return true;
+        } catch (error) {
+            console.error('Error al enviar orden de bajar volumen a VLC:', error);
+            return false;
         }
     }
 
