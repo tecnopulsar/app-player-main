@@ -36,13 +36,43 @@ let controllerClient;
 
 // Hacer la ventana global para poder acceder a ella desde el controllerClient
 global.mainWindow = null;
+global.vlcPlayer = null;
 
 async function createWindow() {
   try {
     await setupDirectories();
 
     // Verificar que exista el archivo de playlist activa
-    await getActivePlaylist();
+    let playlistIsValid = false;
+    let activePlaylist = null;
+
+    try {
+      const { activePlaylistExists, createEmptyActivePlaylist, getActivePlaylist } = await import('./src/utils/activePlaylist.mjs');
+
+      // Verificar si el archivo existe, crearlo si no
+      const exists = await activePlaylistExists();
+
+      if (!exists) {
+        console.log('⚠️ No se encontró archivo de playlist activa, creando uno nuevo...');
+        await createEmptyActivePlaylist();
+        console.log('ℹ️ No hay playlist configurada. No se iniciará VLC.');
+      } else {
+        // Obtener la playlist activa
+        activePlaylist = await getActivePlaylist();
+        console.log('✅ Archivo de playlist activa verificado correctamente');
+
+        // Verificar si hay datos válidos para iniciar VLC
+        if (!activePlaylist || activePlaylist.playlistName === null) {
+          console.log('ℹ️ No hay playlist configurada actualmente. No se iniciará VLC.');
+        } else {
+          console.log(`ℹ️ Playlist activa configurada: ${activePlaylist.playlistName}`);
+          playlistIsValid = true; // Marcar que hay una playlist válida
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ No se pudo verificar el archivo de playlist activa:', error);
+      console.log('ℹ️ Continuando sin cargar playlist ni iniciar VLC...');
+    }
 
     // Inicializar el cliente de controlador
     console.log('\n=== Iniciando Cliente de Controlador ===');
@@ -69,10 +99,20 @@ async function createWindow() {
     // Inicializar el sistema de logs
     initLogs(mainWindow);
 
-    vlcPlayer = new VLCPlayer();
-    const success = await vlcPlayer.start();
-    if (!success) {
-      console.error('Error al iniciar VLC');
+    // Solo iniciar VLC si hay una playlist válida configurada
+    if (playlistIsValid) {
+      vlcPlayer = new VLCPlayer();
+      const success = await vlcPlayer.start();
+      if (!success) {
+        console.error('❌ Error al iniciar VLC');
+        sendLog('Error al iniciar VLC', 'error');
+      } else {
+        console.log('✅ VLC iniciado correctamente con la playlist configurada');
+        sendLog('VLC iniciado correctamente', 'success');
+      }
+    } else {
+      console.log('ℹ️ VLC no se iniciará hasta que se configure una playlist válida');
+      sendLog('VLC no iniciado - No hay playlist configurada', 'warning');
     }
 
     // Crear y configurar la aplicación Express
@@ -88,8 +128,21 @@ async function createWindow() {
     app.get('/', async (req, res) => {
       try {
         // Obtener el estado de VLC y la información de la playlist
-        const vlcStatus = await getVLCStatus();
-        const playlistInfo = await getPlaylistInfo();
+        // Si VLC no está iniciado, proporcionar un estado predeterminado
+        const vlcStatus = vlcPlayer ? await getVLCStatus() : {
+          status: 'stopped',
+          message: 'No hay playlist configurada',
+          playing: false,
+          position: 0,
+          length: 0
+        };
+
+        const playlistInfo = activePlaylist || {
+          playlistName: null,
+          playlistPath: null,
+          lastLoaded: null,
+          message: 'No hay playlist configurada'
+        };
 
         const templatePath = path.join(__dirname, 'index.html');
         const data = {
@@ -123,6 +176,7 @@ async function createWindow() {
       mainWindow.webContents.executeJavaScript(`
         window.port = ${port};
         window.directorioVideos = '${path.join(__dirname, 'videos')}';
+        window.playlistConfigured = ${playlistIsValid};
       `);
     });
 
@@ -130,14 +184,34 @@ async function createWindow() {
     sendLog('Aplicación iniciada', 'success');
     sendLog(`Servidor Express corriendo en puerto ${port}`, 'info');
     sendLog(`Directorio de videos: ${path.join(__dirname, 'videos')}`, 'info');
-    sendLog('VLC está funcionando correctamente', 'success');
+
+    // Solo mostrar estado de VLC si se inició
+    if (playlistIsValid && vlcPlayer) {
+      sendLog('VLC está funcionando correctamente', 'success');
+    } else {
+      sendLog('VLC no iniciado - No hay playlist configurada', 'warning');
+    }
 
     // Iniciar un intervalo para actualizar el estado de VLC en el frontend
     const updateVLCStatusInterval = setInterval(async () => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         try {
-          const vlcStatus = await getVLCStatus();
-          const playlistInfo = await getPlaylistInfo();
+          // Si VLC no está inicializado, proporcionar un estado predeterminado
+          const vlcStatus = vlcPlayer ? await getVLCStatus() : {
+            status: 'stopped',
+            message: 'No hay playlist configurada',
+            playing: false,
+            position: 0,
+            length: 0
+          };
+
+          const playlistInfo = activePlaylist || {
+            playlistName: null,
+            playlistPath: null,
+            lastLoaded: null,
+            message: 'No hay playlist configurada'
+          };
+
           mainWindow.webContents.send('vlc-status-update', { vlcStatus, playlistInfo });
         } catch (error) {
           console.error('Error al actualizar estado de VLC:', error);
@@ -217,35 +291,101 @@ ipcMain.on('start-timer', (event) => {
 
 // Manejar el evento para iniciar el reproductor
 ipcMain.on('start-player', async () => {
-  if (vlcPlayer) {
-    const success = await vlcPlayer.start();
-    if (!success && mainWindow) {
-      mainWindow.webContents.send('player-error', 'Error al iniciar el reproductor');
-    }
-  } else {
-    console.error('VLC Player no está inicializado');
+  // Verificar si VLC no está iniciado por falta de playlist
+  if (!vlcPlayer) {
+    console.log('⚠️ No se puede iniciar VLC: No hay playlist configurada');
     if (mainWindow) {
-      mainWindow.webContents.send('player-error', 'El reproductor no está inicializado');
+      mainWindow.webContents.send('player-error', 'No se puede iniciar el reproductor: No hay playlist configurada');
+    }
+    return;
+  }
+
+  const success = await vlcPlayer.start();
+  if (!success && mainWindow) {
+    mainWindow.webContents.send('player-error', 'Error al iniciar el reproductor');
+  }
+});
+
+// Manejar el evento para iniciar VLC con una playlist específica
+ipcMain.on('start-vlc-with-playlist', async (event, data) => {
+  console.log(`📣 Evento recibido para iniciar VLC con playlist: ${data.playlistName}`);
+
+  try {
+    // Si ya existe una instancia de VLC, detenerla primero
+    if (vlcPlayer) {
+      console.log('⏹️ Deteniendo instancia actual de VLC...');
+      await vlcPlayer.stop();
+    }
+
+    // Crear una nueva instancia de VLC
+    console.log('🔄 Creando nueva instancia de VLC...');
+    vlcPlayer = new VLCPlayer();
+
+    // Iniciar VLC con la playlist
+    const success = await vlcPlayer.start();
+
+    if (success) {
+      console.log(`✅ VLC iniciado correctamente con la playlist: ${data.playlistName}`);
+      sendLog(`VLC iniciado con playlist: ${data.playlistName}`, 'success');
+
+      // Actualizar la interfaz de usuario
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('vlc-status-update', {
+          vlcStatus: {
+            status: 'playing',
+            message: `Reproduciendo playlist: ${data.playlistName}`,
+            playing: true
+          },
+          playlistInfo: {
+            playlistName: data.playlistName,
+            playlistPath: data.playlistPath,
+            lastLoaded: new Date().toISOString(),
+            isActive: true
+          }
+        });
+      }
+    } else {
+      console.error('❌ Error al iniciar VLC con la playlist');
+      sendLog('Error al iniciar VLC con la playlist', 'error');
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('player-error', 'Error al iniciar el reproductor con la playlist');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error al procesar evento start-vlc-with-playlist:', error);
+    sendLog(`Error al iniciar VLC: ${error.message}`, 'error');
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('player-error', `Error: ${error.message}`);
     }
   }
 });
 
 // Manejar el evento para detener el reproductor
 ipcMain.on('stop-player', () => {
-  if (vlcPlayer) {
-    vlcPlayer.stop();
-  } else {
-    windowManager.closePlayerWindow();
+  if (!vlcPlayer) {
+    console.log('⚠️ No se puede detener VLC: No está iniciado');
+    if (mainWindow) {
+      mainWindow.webContents.send('player-info', 'El reproductor no está iniciado');
+    }
+    return;
   }
+
+  vlcPlayer.stop();
 });
 
 // Manejar el evento para alternar el audio
 ipcMain.on('toggle-audio', () => {
-  if (vlcPlayer) {
-    vlcPlayer.toggleAudio();
-  } else {
-    windowManager.togglePlayerAudio();
+  if (!vlcPlayer) {
+    console.log('⚠️ No se puede modificar el audio: VLC no está iniciado');
+    if (mainWindow) {
+      mainWindow.webContents.send('player-info', 'El reproductor no está iniciado');
+    }
+    return;
   }
+
+  vlcPlayer.toggleAudio();
 });
 
 // Manejo de eventos IPC
@@ -261,61 +401,42 @@ ipcMain.on('some-event', (event) => {
 ipcMain.on('remote-control', async (event, { action, data }) => {
   console.log(`Recibido evento de control remoto: ${action}`, data);
 
+  // Verificar si VLC no está iniciado para la mayoría de las acciones
+  if (!vlcPlayer) {
+    console.log(`⚠️ No se puede ejecutar acción '${action}': VLC no está iniciado`);
+    mainWindow?.webContents.send('player-info', 'El reproductor no está iniciado');
+    return;
+  }
+
   try {
     switch (action) {
       case 'PLAY':
-        if (vlcPlayer) {
-          const success = await vlcPlayer.start();
-          if (!success && mainWindow) {
-            mainWindow.webContents.send('player-error', 'Error al iniciar el reproductor');
-          }
+        const success = await vlcPlayer.start();
+        if (!success && mainWindow) {
+          mainWindow.webContents.send('player-error', 'Error al iniciar el reproductor');
         }
         break;
       case 'PAUSE':
-        // Enviar comando de pausa a VLC
-        if (vlcPlayer) {
-          // Esta función debe implementarse en VLCPlayer
-          vlcPlayer.pause();
-        }
+        vlcPlayer.pause();
         break;
       case 'STOP':
-        if (vlcPlayer) {
-          vlcPlayer.stop();
-        }
+        vlcPlayer.stop();
         break;
       case 'NEXT':
-        // Enviar comando de siguiente a VLC
-        if (vlcPlayer) {
-          // Esta función debe implementarse en VLCPlayer
-          vlcPlayer.next();
-        }
+        vlcPlayer.next();
         break;
       case 'PREVIOUS':
-        // Enviar comando de anterior a VLC
-        if (vlcPlayer) {
-          // Esta función debe implementarse en VLCPlayer
-          vlcPlayer.previous();
-        }
+        vlcPlayer.previous();
         break;
       case 'VOLUME_UP':
-        // Enviar comando de subir volumen a VLC
-        if (vlcPlayer) {
-          // Esta función debe implementarse en VLCPlayer
-          vlcPlayer.volumeUp();
-        }
+        vlcPlayer.volumeUp();
         break;
       case 'VOLUME_DOWN':
-        // Enviar comando de bajar volumen a VLC
-        if (vlcPlayer) {
-          // Esta función debe implementarse en VLCPlayer
-          vlcPlayer.volumeDown();
-        }
+        vlcPlayer.volumeDown();
         break;
       case 'MUTE':
       case 'UNMUTE':
-        if (vlcPlayer) {
-          vlcPlayer.toggleAudio();
-        }
+        vlcPlayer.toggleAudio();
         break;
       default:
         console.warn(`Acción no reconocida: ${action}`);

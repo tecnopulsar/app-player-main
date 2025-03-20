@@ -6,9 +6,7 @@ async function setupDirectories() {
     const directories = [
         appConfig.paths.uploads,
         appConfig.paths.videos,
-        appConfig.paths.videosDefecto,
-        appConfig.paths.playlist,
-        appConfig.paths.playlistDefecto,
+        appConfig.paths.playlists,
         appConfig.paths.screenshots,
         appConfig.paths.snapshots,
         appConfig.paths.images,

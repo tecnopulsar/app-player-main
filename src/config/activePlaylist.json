@@ -1,6 +1,7 @@
 {
-  "playlistName": "playlist_1742486166400",
-  "playlistPath": "public/videos/playlist_1742486166400/playlist_1742486166400.m3u",
-  "lastLoaded": "2025-03-20T15:58:34.577Z",
-  "isActive": true
+  "playlistName": "VideosCortos",
+  "playlistPath": "public/videos/VideosCortos/VideosCortos.m3u.temp",
+  "lastLoaded": "2025-03-20T23:43:33.687Z",
+  "isActive": true,
+  "isDefault": false
 }

@@ -11,9 +11,7 @@ const appConfig = {
         uploads: './public/uploads',
         public: './public',
         videos: './public/videos',
-        videosDefecto: './public/videosDefecto',
-        playlist: './public/videos/playlist',
-        playlistDefecto: './public/videosDefecto/playlistDefecto',
+        playlists: './public/videos/playlists',
         screenshots: './public/screenshots',
         snapshots: './public/snapshots',
         images: './public/images',
@@ -24,7 +22,8 @@ const appConfig = {
     app: {
         name: 'App Player',
         version: '1.0.0',
-        debug: process.env.NODE_ENV === 'development'
+        debug: process.env.NODE_ENV === 'development',
+        defaultPlaylist: 'default'
     },
 
     // Configuración del controlador

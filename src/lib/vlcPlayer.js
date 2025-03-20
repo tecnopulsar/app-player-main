@@ -34,11 +34,12 @@ export class VLCPlayer {
                 }
 
                 // Verificar que los archivos referenciados existen
+                const playlistDir = path.dirname(playlistPath);
                 for (const entry of entries) {
-                    // Extraer solo el nombre del archivo de la ruta absoluta
+                    // Extraer solo el nombre del archivo
                     const fileName = path.basename(entry.trim());
-                    // Construir la ruta completa dentro del proyecto
-                    const videoPath = path.join(appConfig.paths.videosDefecto, 'playlistDefecto', fileName);
+                    // Construir la ruta completa relativa al directorio de la playlist
+                    const videoPath = path.join(playlistDir, fileName);
 
                     try {
                         await fs.access(videoPath);
@@ -174,15 +175,43 @@ export class VLCPlayer {
         };
     }
 
+    /**
+     * Reinicia el reproductor VLC
+     * @returns {Promise<boolean>} true si se reinició correctamente
+     */
     async restart() {
-        console.log('Reiniciando VLC...');
-        this.stop();
+        try {
+            console.log('⏱️ Reiniciando VLC...');
 
-        // Esperar un momento antes de reiniciar
-        await new Promise(resolve => setTimeout(resolve, 2000));
+            // Detener el proceso actual de VLC si existe
+            if (this.process) {
+                console.log('🛑 Deteniendo instancia previa de VLC...');
+                await this.stop();
 
-        // Intentar iniciar de nuevo
-        return this.start();
+                // Esperar un momento para asegurar que el proceso se ha cerrado correctamente
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            // Obtener la playlist activa actualizada
+            const activePlaylist = await getActivePlaylist();
+            this.playlistPath = activePlaylist.playlistPath;
+
+            console.log(`🎬 Reiniciando VLC con playlist: ${activePlaylist.playlistName}`);
+
+            // Iniciar VLC de nuevo
+            const success = await this.start();
+
+            if (success) {
+                console.log('✅ VLC reiniciado correctamente');
+                return true;
+            } else {
+                console.error('❌ Error al reiniciar VLC');
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Error durante el reinicio de VLC:', error);
+            return false;
+        }
     }
 
     stop() {

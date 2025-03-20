@@ -264,6 +264,23 @@ router.post('/playlist/load/:name', async (req, res) => {
             playlistPath: playlist.path
         });
 
+        // Intentar iniciar VLC si no está ejecutándose
+        try {
+            // Notificar al proceso principal para iniciar VLC con la playlist
+            console.log(`✅ Enviando evento para iniciar VLC con playlist: ${playlistName}`);
+
+            // Si hay una ventana principal registrada en el IPC, enviar el evento
+            if (global && global.mainWindow && !global.mainWindow.isDestroyed()) {
+                global.mainWindow.webContents.send('start-vlc-with-playlist', {
+                    playlistName: playlistName,
+                    playlistPath: playlist.path
+                });
+            }
+        } catch (vlcError) {
+            console.error('❌ Error al solicitar inicio de VLC:', vlcError);
+            // Continuar con la respuesta incluso si la solicitud de VLC falló
+        }
+
         res.json({
             success: true,
             message: `Playlist '${playlistName}' cargada correctamente`,
@@ -389,14 +406,23 @@ export async function getPlaylistDetails(name) {
         const videoFiles = lines
             .filter(line => line.trim() && !line.startsWith('#'))
             .map(line => {
-                const filePath = line.trim();
-                const fileName = path.basename(filePath);
+                // Si el archivo tiene una ruta absoluta, usar solo el nombre de archivo
+                const fileName = path.basename(line.trim());
+                // Construir la ruta absoluta correcta para el archivo
+                const filePath = path.join(playlistDir, fileName);
                 return { fileName, filePath };
             });
 
+        // Crear una versión temporal de la playlist con rutas absolutas correctas
+        const tempPlaylistPath = `${playlistPath}.temp`;
+        await fsPromises.writeFile(
+            tempPlaylistPath,
+            `#EXTM3U\n${videoFiles.map(vf => vf.filePath).join('\n')}\n`
+        );
+
         return {
             name,
-            path: playlistPath,
+            path: tempPlaylistPath, // Usar la playlist temporal con rutas absolutas
             files: videoFiles,
             totalFiles: videoFiles.length
         };

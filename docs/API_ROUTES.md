@@ -311,6 +311,7 @@ Este endpoint flexible permite subir uno o varios archivos a una playlist. Sopor
 - `playlistName` (form-data, opcional): Nombre de la playlist. Si no se proporciona, se genera automáticamente
 - `countPlaylistItems` (form-data, opcional): Número total de archivos esperados (para modo progresivo)
 - `mode` (form-data, opcional): Modo de subida ('single', 'multi', 'progressive', o 'auto')
+- `isDefault` (form-data, opcional): Si es `true`, establece la playlist como la playlist por defecto del sistema
 
 **Ejemplo Postman (Modo Individual):**
 ```
@@ -340,6 +341,15 @@ Body: form-data
 - mode: progressive
 ```
 
+**Ejemplo Postman (Playlist por Defecto):**
+```
+POST http://localhost:3000/api/playlist/upload
+Body: form-data
+- files: [seleccionar múltiples archivos]
+- isDefault: true
+- mode: multi
+```
+
 **Respuesta (Modo Individual/Progresivo, archivo intermedio):**
 ```json
 {
@@ -348,7 +358,8 @@ Body: form-data
     "progress": {
         "current": 1,
         "total": 3,
-        "filename": "video1.mp4"
+        "filename": "video1.mp4",
+        "isDefault": false
     }
 }
 ```
@@ -360,24 +371,95 @@ Body: form-data
     "message": "Playlist procesada correctamente",
     "playlist": {
         "name": "mi_playlist",
-        "path": "/home/tecno/app-player/public/videos/mi_playlist/mi_playlist.m3u",
-        "totalFiles": 3
+        "path": "/home/tecno/app-player/public/videos/playlists/mi_playlist/mi_playlist.m3u",
+        "totalFiles": 3,
+        "isDefault": false
     }
 }
 ```
 
-**Respuesta (Modo Múltiple):**
+**Respuesta (Modo Múltiple, playlist por defecto):**
 ```json
 {
     "success": true,
-    "message": "Playlist procesada correctamente",
+    "message": "Playlist por defecto procesada correctamente",
     "playlist": {
-        "name": "mi_playlist",
-        "path": "/home/tecno/app-player/public/videos/mi_playlist/mi_playlist.m3u",
+        "name": "default",
+        "path": "/home/tecno/app-player/public/videos/playlists/default/default.m3u",
         "totalFiles": 3,
-        "files": ["video1.mp4", "video2.mp4", "video3.mp4"]
+        "files": ["video1.mp4", "video2.mp4", "video3.mp4"],
+        "isDefault": true
     }
 }
+```
+
+### Establecer una playlist existente como playlist por defecto
+
+```
+POST /api/playlist/set-default/{nombre_playlist}
+```
+
+Establece una playlist existente como la playlist por defecto del sistema.
+
+**Parámetros:**
+- `nombre_playlist` (en la URL): Nombre de la playlist a establecer como por defecto
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Playlist 'mi_playlist' establecida como playlist por defecto",
+    "playlist": {
+        "name": "mi_playlist",
+        "path": "/home/tecno/app-player/public/videos/playlists/mi_playlist/mi_playlist.m3u",
+        "isDefault": true
+    }
+}
+```
+
+**Ejemplo Postman:**
+```
+POST http://localhost:3000/api/playlist/set-default/mi_playlist
+```
+
+### Eliminar una playlist
+
+```
+DELETE /api/playlist/{nombre_playlist}
+```
+
+Elimina una playlist específica y todos sus archivos. La playlist por defecto no puede ser eliminada sin confirmación explícita.
+
+**Parámetros:**
+- `nombre_playlist` (en la URL): Nombre de la playlist a eliminar
+- `force` (query parameter, opcional): Si es `true`, permite eliminar la playlist por defecto
+
+**Respuesta (Playlist normal):**
+```json
+{
+    "success": true,
+    "message": "Playlist 'mi_playlist' eliminada correctamente"
+}
+```
+
+**Respuesta (Intento de eliminar playlist por defecto sin confirmación):**
+```json
+{
+    "success": false,
+    "message": "No se puede eliminar la playlist por defecto sin confirmación",
+    "needsConfirmation": true,
+    "defaultPlaylist": true
+}
+```
+
+**Ejemplo Postman (Playlist normal):**
+```
+DELETE http://localhost:3000/api/playlist/mi_playlist
+```
+
+**Ejemplo Postman (Eliminar playlist por defecto):**
+```
+DELETE http://localhost:3000/api/playlist/default?force=true
 ```
 
 ## Colección Postman
@@ -556,10 +638,11 @@ Obtiene información sobre la playlist actualmente configurada como activa.
 {
     "success": true,
     "activePlaylist": {
-        "playlistName": "playlistDefecto",
-        "playlistPath": "./public/videosDefecto/playlistDefecto/playlistDefecto.m3u",
+        "playlistName": "default",
+        "playlistPath": "./public/videos/playlists/default/default.m3u",
         "lastLoaded": "2023-03-20T15:30:45.123Z",
-        "isActive": true
+        "isActive": true,
+        "isDefault": true
     }
 }
 ```
@@ -611,6 +694,8 @@ Content-Type: application/json
 #### Notas sobre la Playlist Activa
 
 - Al iniciar la aplicación, el sistema verifica la existencia del archivo `src/config/activePlaylist.json` que almacena la información de la playlist activa.
-- Si el archivo no existe, se crea automáticamente con la playlist por defecto (`playlistDefecto`).
-- La playlist activa se carga automáticamente al iniciar VLC.
-- Cualquier playlist cargada a través de `/api/vlc/playlist/load/{nombre_playlist}` actualiza automáticamente el archivo de configuración de la playlist activa. 
+- Si el archivo no existe, se crea automáticamente con valores nulos.
+- VLC solo se iniciará si existe una playlist activa válida.
+- La playlist por defecto (configurada en `appConfig.app.defaultPlaylist`) no puede ser eliminada sin confirmación explícita.
+- Cualquier playlist cargada a través de `/api/vlc/playlist/load/{nombre_playlist}` actualiza automáticamente el archivo de configuración de la playlist activa.
+- Cuando se marca una playlist como por defecto (con `isDefault=true` o a través de `/api/playlist/set-default/{nombre_playlist}`), esta se establece automáticamente como la playlist activa. 
