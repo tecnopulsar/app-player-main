@@ -123,4 +123,27 @@ La aplicación utiliza un sistema de utilidades para centralizar funcionalidades
   - `getVLCStatus()`: Obtiene el estado actual del reproductor
   - `getPlaylistInfo()`: Obtiene información sobre la playlist actual
 
-## 🔧 Requisitos del
+## 🔧 Requisitos del Sistema
+
+- **Hardware**: 
+  - Raspberry Pi 4 o superior
+  - Mínimo 2 GB de RAM
+  - Conexión a Internet para la instalación de dependencias y actualizaciones
+
+- **Software**:
+  - Sistema operativo compatible (Raspbian, Ubuntu, etc.)
+  - Node.js (versión 14 o superior)
+  - npm (gestor de paquetes de Node.js)
+  - VLC Media Player (debe estar instalado y configurado para la interfaz HTTP)
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Para más detalles, consulta el archivo `LICENSE.md`.
+
+## 📞 Contacto
+
+Para preguntas o soporte, puedes contactar a [tu nombre o correo electrónico].
+
+---
+
+¡Gracias por usar App Player WeTechar! Esperamos que disfrutes de la experiencia de reproducción multimedia.
