@@ -15,6 +15,7 @@ const appConfig = {
         playlist: './public/videos/playlist',
         playlistDefecto: './public/videosDefecto/playlistDefecto',
         screenshots: './public/screenshots',
+        snapshots: './public/snapshots',
         images: './public/images',
         temp: './public/temp'
     },
@@ -24,6 +25,12 @@ const appConfig = {
         name: 'App Player',
         version: '1.0.0',
         debug: process.env.NODE_ENV === 'development'
+    },
+
+    // Configuración del controlador
+    controller: {
+        url: 'http://192.168.1.3:3001',
+        heartbeatInterval: 25000
     },
 
     // Configuración de seguridad

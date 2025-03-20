@@ -4,6 +4,8 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import { promises as fsPromises } from 'fs';
+import path from 'path';
 
 class MonitorServer {
     constructor(port = 3001) {
@@ -58,6 +60,17 @@ class MonitorServer {
                         .status-offline {
                             background-color: #dc3545;
                         }
+                        .screenshot-container {
+                            max-width: 100%;
+                            margin-top: 10px;
+                            border-radius: 4px;
+                            overflow: hidden;
+                        }
+                        .screenshot-container img {
+                            width: 100%;
+                            height: auto;
+                            object-fit: cover;
+                        }
                     </style>
                 </head>
                 <body class="bg-gray-100">
@@ -98,7 +111,9 @@ class MonitorServer {
                             const card = document.createElement('div');
                             card.className = 'bg-white shadow rounded-lg p-4 transition-all duration-300 ' + 
                                             (device.status === 'active' ? '' : 'device-card offline');
-                            card.innerHTML = \`
+                            
+                            // Información básica del dispositivo
+                            let cardHTML = \`
                                 <h3 class="text-lg font-semibold">
                                     <span class="status-indicator \${device.status === 'active' ? 'status-online' : 'status-offline'}"></span>
                                     \${device.name || 'Dispositivo sin nombre'}
@@ -112,6 +127,18 @@ class MonitorServer {
                                     <span class="heartbeat-time">\${new Date(device.lastSeen).toLocaleString()}</span>
                                 </p>
                             \`;
+                            
+                            // Agregar screenshot si está disponible
+                            if (device.snapshot) {
+                                cardHTML += \`
+                                    <div class="screenshot-container">
+                                        <p class="text-sm font-semibold mb-1">Contenido actual:</p>
+                                        <img src="\${device.snapshot}" alt="Screenshot" class="rounded shadow">
+                                    </div>
+                                \`;
+                            }
+                            
+                            card.innerHTML = cardHTML;
                             return card;
                         }
                     </script>
@@ -142,6 +169,7 @@ class MonitorServer {
                 console.log(`IP: ${deviceInfo.ip}`);
                 console.log(`MAC: ${deviceInfo.mac}`);
                 console.log(`Estado: ${deviceInfo.status ? 'Activo' : 'Inactivo'}`);
+                console.log(`Snapshot: ${deviceInfo.snapshot ? 'Recibido' : 'No disponible'}`);
                 console.log('========================\n');
 
                 this.updateDevice(deviceInfo);
@@ -195,7 +223,8 @@ class MonitorServer {
             ...deviceInfo,
             lastSeen: new Date().toISOString(),
             status: 'active',
-            name: deviceInfo.name || existingDevice?.name || 'Dispositivo sin nombre'
+            name: deviceInfo.name || existingDevice?.name || 'Dispositivo sin nombre',
+            snapshot: deviceInfo.snapshot || existingDevice?.snapshot // Guardar el snapshot
         });
 
         // Notificar a todos los clientes conectados

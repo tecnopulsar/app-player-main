@@ -10,7 +10,7 @@
 
 ## Estructura de la Colección
 
-La colección está organizada en 7 secciones principales:
+La colección está organizada en 8 secciones principales:
 
 ### 1. Página Principal
 - **GET /** - Obtiene la página principal de la aplicación
@@ -69,6 +69,18 @@ Endpoints para control básico de reproducción:
   - `file`: Archivo de video (required)
   - `playlistName`: Nombre de la playlist (opcional)
   - `countPlaylistItems`: Número total de items (opcional)
+
+### 8. Playlist Activa
+- **GET /api/active-playlist** - Obtiene información de la playlist activa
+- **POST /api/active-playlist** - Establece una playlist como activa
+- Ejemplo de body para establecer playlist activa:
+  ```json
+  {
+    "playlistName": "mi_playlist"
+  }
+  ```
+- La playlist activa persiste entre reinicios de la aplicación
+- Se carga automáticamente al iniciar VLC
 
 ## Variables de Entorno
 

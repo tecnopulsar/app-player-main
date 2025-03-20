@@ -42,5 +42,14 @@ export const vlcCommands = {
     rate: 'rate', // Velocidad de reproducción
     random: 'pl_random',
     loop: 'pl_loop',
-    repeat: 'pl_repeat'
+    repeat: 'pl_repeat',
+    snapshot: 'snapshot' // Comando para tomar un snapshot
+};
+
+/**
+ * Obtiene la URL del arte/miniatura actual en VLC
+ * @returns {string} URL para obtener la miniatura
+ */
+export const getArtUrl = () => {
+    return `http://${VLC_HOST}:${VLC_PORT}/art`;
 };

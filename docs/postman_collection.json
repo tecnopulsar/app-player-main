@@ -163,6 +163,59 @@
                     ]
                 }
             }
+        },
+        {
+            "name": "Playlist Activa",
+            "description": "Endpoints para gestionar la playlist activa",
+            "item": [
+                {
+                    "name": "Obtener Playlist Activa",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/active-playlist",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "active-playlist"
+                            ]
+                        },
+                        "description": "Obtiene información sobre la playlist actualmente activa."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Establecer Playlist Activa",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"playlistName\": \"playlist_principal\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/active-playlist",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "active-playlist"
+                            ]
+                        },
+                        "description": "Establece una playlist específica como activa."
+                    },
+                    "response": []
+                }
+            ]
         }
     ],
     "event": [

@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { appConfig } from '../config/appConfig.mjs';
 import { vlcRequest, vlcCommands } from '../services/vlcService.mjs';
+import { getActivePlaylist } from '../utils/activePlaylist.mjs';
 
 export class VLCPlayer {
     constructor() {
@@ -61,13 +62,15 @@ export class VLCPlayer {
 
     async start() {
         try {
+            // Obtener la playlist activa
+            const activePlaylist = await getActivePlaylist();
+            this.playlistPath = activePlaylist.playlistPath;
+
             // Obtener la ruta de la playlist
-            this.playlistPath = await this.getPlaylistPath();
             if (!this.playlistPath) {
                 throw new Error('No se encontró la playlist o los videos referenciados');
             }
 
-            // Configuración de VLC
             const options = [
                 '--vout=gles2',
                 '--loop',                     // Reproducción en bucle
@@ -79,6 +82,16 @@ export class VLCPlayer {
                 '--http-port=8080',           // Puerto HTTP
                 '--http-password=tecno',      // Contraseña HTTP
                 '--http-host=localhost',      // Host HTTP
+
+                // Opciones de Snapshot
+                '--snapshot-path=/home/tecno/app-player/public/snapshots/', // Directorio donde se almacenarán las instantáneas
+                '--snapshot-prefix=snapshot', // Prefijo para los nombres de los archivos de instantáneas
+                '--snapshot-format=jpg',     // Formato de las instantáneas (JPEG)
+                '--snapshot-width=300',       // Ancho de las instantáneas (300 píxeles)
+                '--snapshot-height=0',        // Altura de las instantáneas (0 para mantener la relación de aspecto)
+                '--no-snapshot-preview',      // Desactivar la vista previa de las instantáneas
+                '--snapshot-sequential',      // Usar números secuenciales para los nombres de los archivos
+
                 this.playlistPath             // Ruta de la playlist
             ];
 
@@ -107,6 +120,18 @@ export class VLCPlayer {
 
             // Implementar un watchdog simple
             this.setupWatchdog();
+
+            // Cargar la playlist activa en VLC
+            if (this.playlistPath) {
+                setTimeout(async () => {
+                    try {
+                        await vlcRequest(`${vlcCommands.play}&input=${encodeURIComponent(this.playlistPath)}`);
+                        console.log(`Playlist cargada: ${this.playlistPath}`);
+                    } catch (error) {
+                        console.error('Error al cargar la playlist:', error);
+                    }
+                }, 2000); // Esperar 2 segundos para que VLC esté listo
+            }
 
             return true;
         } catch (error) {

@@ -9,13 +9,15 @@ import { appConfig } from './src/config/appConfig.mjs';
 import { initializeServer, stopServer } from './src/servers/serverClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
 import express from 'express';
-import { endpoints } from './src/routes/index.mjs';
+import router from './src/routes/index.mjs';
 import cors from 'cors';
 import ControllerClient from './src/clients/controllerClient.mjs';
 import { getVLCStatus, getPlaylistInfo } from './src/utils/vlcStatus.js';
 import { getBasicNetworkInfo } from './src/utils/networkUtils.js';
 import { renderTemplate } from './src/utils/templateUtils.js';
 import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.js';
+import { setControllerClient } from './src/routes/vlcEndpoints.mjs';
+import { getActivePlaylist } from './src/utils/activePlaylist.mjs';
 
 // Deshabilitar la aceleración por hardware
 app.disableHardwareAcceleration();
@@ -39,10 +41,17 @@ async function createWindow() {
   try {
     await setupDirectories();
 
+    // Verificar que exista el archivo de playlist activa
+    await getActivePlaylist();
+
     // Inicializar el cliente de controlador
     console.log('\n=== Iniciando Cliente de Controlador ===');
     controllerClient = new ControllerClient('http://localhost:3001');
     controllerClient.connect();
+
+    // Configurar el cliente controlador para los endpoints de VLC
+    setControllerClient(controllerClient);
+
     console.log('=====================================\n');
 
     mainWindow = new BrowserWindow({
@@ -101,7 +110,7 @@ async function createWindow() {
     });
 
     // Configuración de rutas API
-    app.use('/api', endpoints);
+    app.use('/api', router);
 
     // Iniciar el servidor con la app configurada
     await initializeServer(port, app);

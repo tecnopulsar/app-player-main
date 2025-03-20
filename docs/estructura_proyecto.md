@@ -15,10 +15,13 @@ app-player/
 ├── public/                  # Archivos estáticos públicos
 ├── src/                     # Código fuente de la aplicación
 │   ├── config/              # Configuraciones
+│   │   ├── appConfig.mjs            # Configuración general
+│   │   └── activePlaylist.json      # Estado de la playlist activa
 │   ├── interface/           # Componentes de interfaz
 │   ├── ipc/                 # Comunicación entre procesos
 │   ├── lib/                 # Bibliotecas internas
 │   ├── routes/              # Definición de rutas y endpoints
+│   │   ├── activePlaylistEndpoints.mjs # Endpoints para playlist activa
 │   │   ├── appEndpoints.mjs        # Endpoints de la aplicación
 │   │   ├── endpoints.mjs            # Endpoints principales
 │   │   ├── fileHandler.mjs          # Manejo de archivos
@@ -29,6 +32,9 @@ app-player/
 │   ├── servers/             # Configuración de servidores
 │   ├── services/            # Servicios de la aplicación
 │   ├── utils/               # Utilidades
+│   │   ├── activePlaylist.mjs       # Funciones para gestionar playlist activa
+│   │   ├── setupDirectories.js      # Configuración de directorios
+│   │   └── vlcStatus.js             # Funciones para estado de VLC
 │   └── windows/             # Configuración de ventanas
 ├── views/                   # Vistas y plantillas
 ├── .git/                    # Directorio de Git
@@ -55,4 +61,20 @@ La interfaz de usuario está implementada utilizando HTML, CSS y JavaScript, con
 
 ### Electron
 
-La aplicación utiliza Electron para proporcionar una experiencia de escritorio multiplataforma. El archivo `main.js` en la raíz del proyecto es el punto de entrada principal para la aplicación Electron. 
+La aplicación utiliza Electron para proporcionar una experiencia de escritorio multiplataforma. El archivo `main.js` en la raíz del proyecto es el punto de entrada principal para la aplicación Electron.
+
+### Gestión de Playlists
+
+La aplicación incluye un sistema completo para gestionar playlists de videos, incluyendo:
+- Carga y gestión de playlists a través de la API
+- Almacenamiento de la playlist activa en `src/config/activePlaylist.json`
+- Funciones de utilidad para gestionar la playlist activa en `src/utils/activePlaylist.mjs`
+- Endpoints específicos para manejar la playlist activa en `src/routes/activePlaylistEndpoints.mjs`
+
+#### Sistema de Playlist Activa
+
+El sistema de playlist activa permite:
+- Mantener persistencia de la última playlist reproducida entre reinicios
+- Cargar automáticamente la playlist al iniciar la aplicación
+- Cambiar la playlist activa a través de la API
+- Acceder a información sobre la playlist actualmente en reproducción 

@@ -10,6 +10,7 @@ async function setupDirectories() {
         appConfig.paths.playlist,
         appConfig.paths.playlistDefecto,
         appConfig.paths.screenshots,
+        appConfig.paths.snapshots,
         appConfig.paths.images,
         appConfig.paths.temp
     ];

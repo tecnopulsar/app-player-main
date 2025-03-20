@@ -43,12 +43,20 @@ const upload = multer({
  * @swagger
  * /api/playlist/upload:
  *   post:
- *     summary: Sube un archivo y lo agrega a una playlist
+ *     summary: Sube uno o varios archivos y los agrega a una playlist
  *     parameters:
  *       - name: file
  *         in: formData
- *         required: true
+ *         required: false
  *         type: file
+ *         description: Archivo individual (usar este o 'files')
+ *       - name: files
+ *         in: formData
+ *         required: false
+ *         type: array
+ *         items:
+ *           type: file
+ *         description: Múltiples archivos (usar este o 'file')
  *       - name: playlistName
  *         in: formData
  *         required: false
@@ -57,8 +65,105 @@ const upload = multer({
  *         in: formData
  *         required: false
  *         type: number
+ *         description: Total de archivos esperados (solo para modo progresivo)
+ *       - name: mode
+ *         in: formData
+ *         required: false
+ *         type: string
+ *         enum: [single, multi, progressive]
+ *         default: auto
+ *         description: Modo de subida (auto detecta basado en los parámetros)
  */
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post('/upload', (req, res, next) => {
+    // Determinar el modo de subida basado en los parámetros o el parámetro 'mode'
+    const mode = req.body.mode || 'auto';
+
+    if (mode === 'multi' || (mode === 'auto' && req.is('multipart/form-data') && !req.body.countPlaylistItems)) {
+        // Modo multi: Subir múltiples archivos a la vez
+        upload.array('files', 20)(req, res, (err) => {
+            if (err) return next(err);
+            handleMultipleFiles(req, res);
+        });
+    } else {
+        // Modo single o progressive: Subir un archivo a la vez
+        upload.single('file')(req, res, (err) => {
+            if (err) return next(err);
+            handleSingleFile(req, res);
+        });
+    }
+});
+
+// Manejador para archivos múltiples
+async function handleMultipleFiles(req, res) {
+    const files = req.files;
+    const playlistNameFromRequest = req.body.playlistName || `playlist_${Date.now()}`;
+
+    if (!files || files.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'No se han proporcionado archivos'
+        });
+    }
+
+    try {
+        // Inicializar la playlist - usando variables globales en lugar de constantes locales
+        activePlaylistName = playlistNameFromRequest.endsWith('.m3u')
+            ? playlistNameFromRequest
+            : `${playlistNameFromRequest}.m3u`;
+
+        playlistDirName = activePlaylistName.replace('.m3u', '');
+        playlistDirPath = path.join(appConfig.paths.videos, playlistDirName);
+
+        previewPlaylistDirPath = currentPlaylistDirPath;
+        currentPlaylistDirPath = playlistDirPath;
+
+        // Crear directorio si no existe
+        await fsPromises.mkdir(playlistDirPath, { recursive: true });
+
+        // Crear o inicializar el archivo de playlist
+        const playlistM3uPath = path.join(playlistDirPath, activePlaylistName);
+        await fsPromises.writeFile(playlistM3uPath, '#EXTM3U\n');
+
+        // Procesar todos los archivos recibidos
+        for (const file of files) {
+            // Mover el archivo a su ubicación final
+            const newFileMP4Path = path.join(playlistDirPath, file.originalname);
+            await fsPromises.rename(file.path, newFileMP4Path);
+
+            // Actualizar la playlist
+            await fsPromises.appendFile(playlistM3uPath, `${newFileMP4Path}\n`);
+        }
+
+        // Ya no eliminamos directorios antiguos
+        console.log(`Nueva playlist creada: ${playlistDirName}`);
+
+        // Resetear contadores para el modo progresivo
+        IndexCountFilesInDirPlaylist = 0;
+        activePlaylistName = null;
+
+        return res.json({
+            success: true,
+            message: 'Playlist procesada correctamente',
+            playlist: {
+                name: playlistDirName,
+                path: playlistM3uPath,
+                totalFiles: files.length,
+                files: files.map(file => file.originalname)
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al procesar archivos múltiples:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error al procesar los archivos',
+            error: error.message
+        });
+    }
+}
+
+// Manejador para archivo individual (modo progresivo)
+async function handleSingleFile(req, res) {
     const file = req.file;
     const playlistNameFromRequest = req.body.playlistName || `playlist_${Date.now()}`;
     countPlaylistItems = parseInt(req.body.countPlaylistItems, 10) || 1;
@@ -104,8 +209,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
         // Verificar si es el último archivo de la playlist
         if (IndexCountFilesInDirPlaylist === countPlaylistItems) {
-            // Limpiar directorios antiguos
-            await cleanupOldDirectories(playlistDirName);
+            // Ya no eliminamos directorios antiguos
+            console.log(`Nueva playlist creada: ${playlistDirName}`);
 
             // Resetear contadores
             IndexCountFilesInDirPlaylist = 0;
@@ -140,24 +245,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             message: 'Error al procesar el archivo',
             error: error.message
         });
-    }
-});
-
-// Función para limpiar directorios antiguos
-async function cleanupOldDirectories(currentDirName) {
-    try {
-        const dirs = await fsPromises.readdir(appConfig.paths.videos);
-        for (const dir of dirs) {
-            const dirPath = path.join(appConfig.paths.videos, dir);
-            const stats = await fsPromises.stat(dirPath);
-            if (stats.isDirectory() && dir !== currentDirName) {
-                await fsPromises.rm(dirPath, { recursive: true, force: true });
-                console.log(`Directorio eliminado: ${dirPath}`);
-            }
-        }
-    } catch (error) {
-        console.error('Error al limpiar directorios antiguos:', error);
-        throw error;
     }
 }
 

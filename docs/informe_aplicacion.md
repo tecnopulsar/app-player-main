@@ -36,6 +36,12 @@ App-Player es una aplicación de reproducción multimedia desarrollada con Elect
    - Soporte para listas de reproducción
    - Carga y descarga de archivos
 
+5. **Sistema de Playlist Activa**
+   - Persistencia de la playlist activa mediante archivo JSON
+   - Carga automática de la playlist al iniciar la aplicación
+   - Endpoints dedicados para gestionar la playlist activa
+   - Integración con el sistema de reproducción VLC
+
 ## Funcionalidades Principales
 
 ### Reproducción Multimedia
@@ -63,6 +69,13 @@ App-Player es una aplicación de reproducción multimedia desarrollada con Elect
 - Soporte para listas de reproducción
 - Carga y descarga de archivos multimedia
 
+### Gestión de Playlist
+
+- Creación y gestión de múltiples playlists
+- Sistema de playlist activa con persistencia entre reinicios
+- Cambio de playlist mediante API
+- Información detallada de la playlist en reproducción
+
 ## Casos de Uso
 
 ### Reproductor Multimedia Centralizado
@@ -84,6 +97,7 @@ La aplicación puede funcionar como un servidor multimedia, permitiendo acceder 
 - Mejora de la interfaz de usuario con más opciones de personalización
 - Integración con sistemas de automatización del hogar
 - Soporte para reproducción sincronizada en múltiples dispositivos
+- Mejoras en el sistema de playlists para soportar programación y rotación de contenido
 
 ## Conclusiones
 

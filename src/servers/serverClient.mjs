@@ -2,7 +2,7 @@
 import express from 'express';
 import { createServer } from 'node:http';
 import cors from 'cors';
-import endpoints from '../routes/endpoints.mjs';
+import router from '../routes/index.mjs';
 import { getDetailedNetworkInfo } from '../utils/networkUtils.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -16,7 +16,7 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : (appConfig.server.p
 
 // Variables globales para el servidor
 export let networkInfo;
-let device;
+export let device;
 let server;
 
 function createApp() {
@@ -72,8 +72,7 @@ export async function initializeServer(customPort = port, app = null) {
       app = createApp();
 
       // Configurar rutas solo si estamos creando una nueva app
-      app.use('/api', endpoints);
-      app.use('/api/upload', uploadHandler);
+      app.use('/api', router);
     }
 
     // Crear servidor HTTP

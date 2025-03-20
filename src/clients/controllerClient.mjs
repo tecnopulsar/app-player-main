@@ -1,6 +1,12 @@
 import { io } from 'socket.io-client';
 import { getVLCStatus, getPlaylistInfo } from '../utils/vlcStatus.js';
 import { getLocalIP, getMACAddress } from '../utils/networkUtils.js';
+import { vlcRequest } from '../services/vlcService.mjs';
+import axios from 'axios';
+import fs from 'fs';
+import { promises as fsPromises } from 'fs';
+import path from 'path';
+import { appConfig } from '../config/appConfig.mjs';
 
 class ControllerClient {
     constructor(serverUrl, monitorUrl = 'http://localhost:3002') {
@@ -193,6 +199,14 @@ class ControllerClient {
                     };
                 }
 
+                // Obtener snapshot para incluirlo en el heartbeat
+                let snapshot = null;
+                try {
+                    snapshot = await this.getSnapshot();
+                } catch (snapshotError) {
+                    console.error('Error al obtener snapshot:', snapshotError);
+                }
+
                 this.deviceInfo.lastSeen = new Date().toISOString();
                 const heartbeatData = {
                     id: this.deviceInfo.id,
@@ -204,7 +218,8 @@ class ControllerClient {
                     vlc: {
                         status: this.deviceInfo.vlcStatus,
                         playlist: this.deviceInfo.playlistInfo
-                    }
+                    },
+                    snapshot: snapshot // Incluir el snapshot en el heartbeat
                 };
 
                 // Enviar heartbeat al servidor controlador
@@ -229,6 +244,7 @@ class ControllerClient {
                 console.log(`VLC Reproduciendo: ${heartbeatData.vlc.status.playing ? 'Sí' : 'No'}`);
                 console.log(`Archivo actual: ${heartbeatData.vlc.status.currentItem || 'Ninguno'}`);
                 console.log(`Playlist: ${heartbeatData.vlc.playlist.name} (${heartbeatData.vlc.playlist.totalItems} archivos)`);
+                console.log(`Snapshot: ${snapshot ? 'Incluido' : 'No disponible'}`);
                 console.log(`Última vez visto: ${heartbeatData.lastSeen}`);
                 console.log(`Socket controlador: ${this.socket.connected}`);
                 console.log(`Socket monitoreo: ${this.monitorSocket?.connected || false}`);
@@ -322,6 +338,74 @@ class ControllerClient {
                 error: error,
                 timestamp: new Date().toISOString()
             });
+        }
+    }
+
+    /**
+     * Obtiene un snapshot del contenido actual en reproducción
+     * @returns {Promise<string|null>} La URL del snapshot como base64 o null si hay error
+     */
+    async getSnapshot() {
+        try {
+            // Llamar al endpoint de snapshot para generar una nueva captura de pantalla
+            const response = await axios.get('http://localhost:3000/api/vlc/snapshot');
+
+            if (response.data.success) {
+                // Leer el archivo como base64
+                const snapshotPath = response.data.snapshotPath;
+
+                if (fs.existsSync(snapshotPath)) {
+                    const imageBuffer = await fsPromises.readFile(snapshotPath);
+                    const base64Image = imageBuffer.toString('base64');
+                    return `data:image/png;base64,${base64Image}`;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Error al obtener snapshot:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Envía un heartbeat al servidor de monitoreo
+     */
+    async sendHeartbeat() {
+        if (this.monitorSocket && this.monitorSocket.connected) {
+            try {
+                // Obtener snapshot actual antes de enviar el heartbeat
+                const snapshot = await this.getSnapshot();
+
+                // Actualizar tiempo del dispositivo
+                this.deviceInfo.lastSeen = new Date().toISOString();
+
+                // Información completa para el heartbeat
+                const heartbeatInfo = {
+                    ...this.deviceInfo,
+                    timestamp: new Date().toISOString(),
+                    status: 'active',
+                    snapshot: snapshot // Incluye la imagen como base64 o null
+                };
+
+                // Enviar heartbeat al servidor de monitoreo
+                this.monitorSocket.emit('heartbeat', heartbeatInfo);
+
+                console.log('\n=== Heartbeat Enviado a Monitor ===');
+                console.log(`ID: ${heartbeatInfo.id || 'No asignado'}`);
+                console.log(`Timestamp: ${heartbeatInfo.timestamp}`);
+                console.log(`Estado: ${heartbeatInfo.status}`);
+                console.log(`Snapshot: ${snapshot ? 'Incluido' : 'No disponible'}`);
+                console.log('================================\n');
+
+                return true;
+            } catch (error) {
+                console.error('Error al enviar heartbeat al monitor:', error);
+                return false;
+            }
+        } else {
+            console.warn('No se pudo enviar heartbeat al monitor: Socket no conectado');
+            this.reconnectMonitor();
+            return false;
         }
     }
 }
