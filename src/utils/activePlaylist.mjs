@@ -3,6 +3,30 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 
 /**
+ * Verificación explícita del archivo activePlaylist.json
+ * @returns {Promise<boolean>} true si el archivo está verificado correctamente
+ */
+async function verifyActivePlaylistFile() {
+    try {
+        // Verificar si el archivo existe, crearlo si no
+        const exists = await activePlaylistExists();
+
+        if (!exists) {
+            console.log('⚠️ No se encontró archivo de playlist activa, creando uno nuevo...');
+            await createEmptyActivePlaylist();
+            console.log('ℹ️ No hay playlist configurada. No se iniciará VLC.');
+            return false;
+        } else {
+            console.log('✅ Archivo de playlist activa verificado correctamente');
+            return true;
+        }
+    } catch (error) {
+        console.error('❌ Error al verificar/crear archivo de playlist activa:', error);
+        return false;
+    }
+}
+
+/**
  * Obtiene la información de la playlist activa
  * @returns {Promise<Object|null>} Información de la playlist activa o null si hay error
  */
@@ -133,5 +157,6 @@ export {
     getActivePlaylist,
     updateActivePlaylist,
     activePlaylistExists,
-    createEmptyActivePlaylist
+    createEmptyActivePlaylist,
+    verifyActivePlaylistFile
 }; 
