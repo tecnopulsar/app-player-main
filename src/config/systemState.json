@@ -1,0 +1,89 @@
+{
+  "timestamp": "2025-03-21T13:36:14.982Z",
+  "system": {
+    "hostname": "base",
+    "platform": "linux",
+    "arch": "arm64",
+    "release": "6.12.18-v8+",
+    "cpus": 4,
+    "totalMem": 3923357696,
+    "freeMem": 1725267968,
+    "uptime": 56976.33,
+    "loadavg": [
+      1.01,
+      0.7,
+      0.63
+    ],
+    "network": {
+      "lo": {
+        "address": "127.0.0.1",
+        "netmask": "255.0.0.0",
+        "mac": "00:00:00:00:00:00",
+        "internal": true
+      },
+      "eth0": {
+        "address": "192.168.1.200",
+        "netmask": "255.255.255.0",
+        "mac": "d8:3a:dd:0b:20:e8",
+        "internal": false
+      },
+      "wlan0": {
+        "address": "192.168.1.84",
+        "netmask": "255.255.255.0",
+        "mac": "d8:3a:dd:0b:20:e9",
+        "internal": false
+      }
+    },
+    "timestamp": "2025-03-21T13:36:14.931Z"
+  },
+  "storage": {
+    "videosDirectory": "./public/videos",
+    "videosStats": {
+      "exists": true,
+      "isDirectory": true,
+      "size": 0,
+      "fileCount": 0
+    },
+    "totalSpace": 61641601024,
+    "freeSpace": 42484084736,
+    "usedSpace": 19157516288,
+    "timestamp": "2025-03-21T13:36:14.962Z"
+  },
+  "vlc": {
+    "connected": true,
+    "playing": true,
+    "paused": false,
+    "stopped": false,
+    "currentItem": "ForBiggerBlazes.mp4",
+    "position": 0.24304088950157,
+    "time": 3,
+    "length": 15,
+    "volume": 0,
+    "random": false,
+    "repeat": false,
+    "fullscreen": false
+  },
+  "app": {
+    "deviceId": "9c30157f",
+    "deviceName": "base",
+    "deviceType": "player",
+    "deviceGroup": "default",
+    "server": {
+      "port": 3000,
+      "host": "0.0.0.0"
+    },
+    "vlcConfig": {
+      "host": "localhost",
+      "port": 8080
+    },
+    "version": "1.0.0",
+    "startTime": "2025-03-21T13:36:14.982Z",
+    "nodeVersion": "v22.14.0"
+  },
+  "activePlaylist": {
+    "playlistName": "VideosCortos",
+    "playlistPath": null,
+    "fileCount": 3,
+    "currentIndex": 0
+  }
+}

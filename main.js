@@ -22,6 +22,7 @@ import playlistService from './src/services/playlistService.mjs';
 import playlistRoutes from './src/routes/playlistRoutes.mjs';
 import { createExpressApp, addConfigRoutes } from './src/utils/expressUtils.mjs';
 import { initializePlaylistSystem } from './src/services/playlistSystemService.mjs';
+import { startSystemStateMonitor } from './src/utils/systemState.mjs';
 
 // Deshabilitar la aceleración por hardware
 app.disableHardwareAcceleration();
@@ -41,6 +42,9 @@ let controllerClient;
 // Hacer la ventana global para poder acceder a ella desde el controllerClient
 global.mainWindow = null;
 global.vlcPlayer = null;
+
+// Añadir variable global para el monitor de estado
+let stateMonitor = null;
 
 async function createWindow() {
   try {
@@ -96,6 +100,12 @@ async function createWindow() {
 
     // Inicializar el servicio de playlist
     await playlistService.initialize();
+
+    // Iniciar el monitor de estado del sistema con un retraso para dar tiempo a que VLC esté preparado
+    setTimeout(() => {
+      stateMonitor = startSystemStateMonitor(30000);
+      console.log('Monitor de estado del sistema iniciado');
+    }, 5000); // Esperar 5 segundos después de iniciar VLC antes de empezar a monitorear
 
     // Solo iniciar VLC si hay una playlist válida configurada
     if (playlistIsValid) {
@@ -369,4 +379,18 @@ ipcMain.on('start-vlc-with-playlist', async (event, data) => {
       mainWindow.webContents.send('player-error', `Error: ${error.message}`);
     }
   }
+});
+
+// En el evento 'will-quit' o 'before-quit', detener el monitor de estado
+app.on('will-quit', () => {
+  console.log('🛑 Deteniendo servicios antes de cerrar la aplicación...');
+
+  // Detener el monitor de estado del sistema
+  if (stateMonitor) {
+    stateMonitor.stop();
+    console.log('Monitor de estado del sistema detenido');
+  }
+
+  // Otros procesos de limpieza...
+  console.log('Aplicación cerrándose, recursos liberados');
 });
