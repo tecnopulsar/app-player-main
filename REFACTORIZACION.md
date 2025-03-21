@@ -18,10 +18,7 @@ Se ha realizado una refactorización completa de la arquitectura de la aplicaci�
 2. **src/services/playlistSystemService.mjs**
    - `initializePlaylistSystem()`: Inicializa todos los componentes del sistema de playlists
 
-3. **src/servers/expressServer.mjs**
-   - `startStandaloneServer()`: Permite iniciar un servidor Express independiente si es necesario
-
-4. **src/utils/activePlaylist.mjs (actualizado)**
+3. **src/utils/activePlaylist.mjs (actualizado)**
    - Se añadió `verifyActivePlaylistFile()`: Verifica la existencia del archivo de configuración de playlist activa
 
 ### Mejoras en el Proceso Principal (main.js)

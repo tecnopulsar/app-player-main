@@ -2,6 +2,7 @@ import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { appConfig } from '../config/appConfig.mjs';
+import { getSystemState, saveSystemState } from './systemState.mjs';
 
 /**
  * Clase para gestionar playlists en la nueva estructura unificada
@@ -12,7 +13,6 @@ class PlaylistManager {
         this.defaultPlaylistName = appConfig.app.defaultPlaylist;
         this.defaultPlaylistDir = path.join(this.playlistsDir, this.defaultPlaylistName);
         this.defaultPlaylistPath = path.join(this.defaultPlaylistDir, `${this.defaultPlaylistName}.m3u`);
-        this.activePlaylistFile = path.join(process.cwd(), 'src/config/activePlaylist.json');
     }
 
     /**
@@ -216,24 +216,30 @@ class PlaylistManager {
      */
     async getActivePlaylist() {
         try {
-            // Verificar si el archivo existe
-            if (!fs.existsSync(this.activePlaylistFile)) {
-                // Si no existe, crear archivo con datos nulos
+            // Obtener el estado del sistema
+            const systemState = await getSystemState();
+
+            // Verificar si hay una playlist activa
+            if (!systemState.activePlaylist || !systemState.activePlaylist.playlistName) {
+                // Si no existe, retornar datos nulos
                 const emptyPlaylist = {
                     playlistName: null,
                     playlistPath: null,
                     lastLoaded: null,
                     isActive: false,
-                    isDefault: false
+                    isDefault: false,
+                    currentIndex: 0,
+                    fileCount: 0
                 };
-                await fsPromises.writeFile(this.activePlaylistFile, JSON.stringify(emptyPlaylist, null, 2));
-                console.log(`✅ Archivo de playlist activa creado con valores iniciales nulos`);
                 return emptyPlaylist;
             }
 
-            // Leer el archivo
-            const data = await fsPromises.readFile(this.activePlaylistFile, 'utf8');
-            return JSON.parse(data);
+            // Devolver la información de la playlist activa desde el estado del sistema
+            return {
+                ...systemState.activePlaylist,
+                isActive: true,
+                lastLoaded: systemState.activePlaylist.lastLoaded || new Date().toISOString()
+            };
         } catch (error) {
             console.error('❌ Error al obtener la playlist activa:', error);
             throw error;
@@ -252,10 +258,20 @@ class PlaylistManager {
                 ...playlistInfo,
                 lastLoaded: currentDate,
                 isActive: true,
-                isDefault: playlistInfo.playlistName === this.defaultPlaylistName
+                isDefault: playlistInfo.playlistName === this.defaultPlaylistName,
+                currentIndex: playlistInfo.currentIndex || 0,
+                fileCount: playlistInfo.fileCount || 0
             };
 
-            await fsPromises.writeFile(this.activePlaylistFile, JSON.stringify(updatedInfo, null, 2));
+            // Obtener el estado actual
+            const state = await getSystemState();
+
+            // Actualizar la información de la playlist activa
+            state.activePlaylist = updatedInfo;
+
+            // Guardar el estado actualizado
+            await saveSystemState(state);
+
             return updatedInfo;
         } catch (error) {
             console.error('❌ Error al actualizar la playlist activa:', error);

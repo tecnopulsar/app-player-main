@@ -1,6 +1,6 @@
 import { setupDirectories } from '../utils/setupDirectories.js';
 import playlistService from './playlistService.mjs';
-import { verifyActivePlaylistFile } from '../utils/activePlaylist.mjs';
+import { getSystemState } from '../utils/systemState.mjs';
 
 /**
  * Inicializa todos los componentes necesarios para el sistema de playlists
@@ -8,11 +8,11 @@ import { verifyActivePlaylistFile } from '../utils/activePlaylist.mjs';
  */
 export async function initializePlaylistSystem() {
     try {
-        // Verificar archivo de playlist activa
-        await verifyActivePlaylistFile();
-
         // Crear directorios necesarios
         await setupDirectories();
+
+        // Verificar que existe un estado del sistema
+        await getSystemState();
 
         // Inicializar el servicio de playlist
         await playlistService.initialize();

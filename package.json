@@ -12,8 +12,7 @@
     "build": "electron-packager . --platform=win32 --arch=x64 --icon=icon.ico --out=dist",
     "start:dev": "electron main.js",
     "server": "node src/servers/serverClient.mjs",
-    "dev:nodemon": "nodemon src/servers/serverClient.mjs",
-    "standalone-server": "node -e \"import('./src/servers/expressServer.mjs').then(({startStandaloneServer}) => startStandaloneServer())\""
+    "dev:nodemon": "nodemon src/servers/serverClient.mjs"
   },
   "keywords": [],
   "author": "",

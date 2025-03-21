@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import { appConfig } from '../config/appConfig.mjs';
-import { updateActivePlaylist } from '../utils/activePlaylist.mjs';
+import { getSystemState, saveSystemState } from '../utils/systemState.mjs';
 
 // Importar electron para comunicación con el proceso principal
 let global = null;
@@ -277,7 +277,8 @@ async function handleSingleFile(req, res) {
                 await updateActivePlaylist({
                     playlistName: playlistDirName,
                     playlistPath: newPlaylistM3uPath,
-                    isDefault: true
+                    isDefault: true,
+                    fileCount: countPlaylistItems
                 });
 
                 console.log(`✅ Playlist por defecto ${playlistDirName} configurada como activa`);
@@ -463,5 +464,29 @@ router.use((error, req, res, next) => {
     }
     next(error);
 });
+
+// Actualizar la playlist activa como la playlist por defecto
+async function updateActivePlaylist(playlistInfo) {
+    try {
+        // Obtener el estado actual
+        const state = await getSystemState();
+
+        // Actualizar la información de la playlist activa
+        state.activePlaylist = {
+            playlistName: playlistInfo.playlistName,
+            playlistPath: playlistInfo.playlistPath,
+            isDefault: playlistInfo.isDefault,
+            currentIndex: 0,
+            fileCount: playlistInfo.fileCount || 0
+        };
+
+        // Guardar el estado actualizado
+        await saveSystemState(state);
+        console.log(`✅ Estado del sistema actualizado con la playlist activa: ${playlistInfo.playlistName}`);
+    } catch (error) {
+        console.error('❌ Error al actualizar el estado del sistema:', error);
+        throw error;
+    }
+}
 
 export default router;

@@ -9,7 +9,7 @@ import axios from 'axios';
 import { Router } from 'express';
 import FormData from 'form-data';
 import { networkInfo, device } from '../servers/serverClient.mjs';
-import { getActivePlaylist, updateActivePlaylist } from '../utils/activePlaylist.mjs';
+import { getSystemState, saveSystemState } from '../utils/systemState.mjs';
 
 const router = Router();
 let controllerClient;
@@ -258,11 +258,16 @@ router.post('/playlist/load/:name', async (req, res) => {
         // Cargar la playlist en VLC - supone que vlcCommands tiene un comando para cargar
         await vlcRequest(`${vlcCommands.play}&input=${encodeURIComponent(playlist.path)}`);
 
-        // Actualizar el archivo JSON con la playlist activa
-        await updateActivePlaylist({
+        // Actualizar el estado del sistema con la nueva playlist activa
+        const systemState = await getSystemState();
+        systemState.activePlaylist = {
             playlistName: playlistName,
-            playlistPath: playlist.path
-        });
+            playlistPath: playlist.path,
+            fileCount: playlist.files?.length || 0,
+            currentIndex: 0,
+            isDefault: false
+        };
+        await saveSystemState(systemState);
 
         res.json({
             success: true,

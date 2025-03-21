@@ -17,12 +17,11 @@ import { getBasicNetworkInfo } from './src/utils/networkUtils.js';
 import { renderTemplate } from './src/utils/templateUtils.js';
 import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.js';
 import { setControllerClient } from './src/routes/vlcEndpoints.mjs';
-import { getActivePlaylist, createEmptyActivePlaylist, activePlaylistExists, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
 import playlistService from './src/services/playlistService.mjs';
 import playlistRoutes from './src/routes/playlistRoutes.mjs';
 import { createExpressApp, addConfigRoutes } from './src/utils/expressUtils.mjs';
 import { initializePlaylistSystem } from './src/services/playlistSystemService.mjs';
-import { startSystemStateMonitor } from './src/utils/systemState.mjs';
+import { startSystemStateMonitor, getSystemState, saveSystemState } from './src/utils/systemState.mjs';
 
 // Deshabilitar la aceleración por hardware
 app.disableHardwareAcceleration();
@@ -50,26 +49,38 @@ async function createWindow() {
   try {
     await setupDirectories();
 
-    // Verificar que exista el archivo de playlist activa
+    // Verificar si existe el archivo de estado del sistema y si hay información de playlist activa
     let playlistIsValid = false;
     let activePlaylist = null;
 
     try {
-      // Verificar archivo de playlist activa
-      await verifyActivePlaylistFile();
+      // Obtener el estado del sistema
+      const systemState = await getSystemState();
 
-      // Obtener la playlist activa
-      activePlaylist = await getActivePlaylist();
+      // Extraer información de la playlist activa
+      if (systemState && systemState.activePlaylist) {
+        activePlaylist = {
+          playlistName: systemState.activePlaylist.playlistName,
+          playlistPath: systemState.activePlaylist.playlistPath,
+          lastLoaded: systemState.timestamp,
+          isActive: systemState.activePlaylist.playlistName !== null,
+          isDefault: systemState.activePlaylist.isDefault,
+          currentIndex: systemState.activePlaylist.currentIndex,
+          fileCount: systemState.activePlaylist.fileCount
+        };
 
-      // Verificar si hay datos válidos para iniciar VLC
-      if (!activePlaylist || activePlaylist.playlistName === null) {
-        console.log('ℹ️ No hay playlist configurada actualmente. No se iniciará VLC.');
+        // Verificar si hay datos válidos para iniciar VLC
+        if (!activePlaylist.playlistName) {
+          console.log('ℹ️ No hay playlist configurada actualmente. No se iniciará VLC.');
+        } else {
+          console.log(`ℹ️ Playlist activa configurada: ${activePlaylist.playlistName}`);
+          playlistIsValid = true; // Marcar que hay una playlist válida
+        }
       } else {
-        console.log(`ℹ️ Playlist activa configurada: ${activePlaylist.playlistName}`);
-        playlistIsValid = true; // Marcar que hay una playlist válida
+        console.log('ℹ️ No hay estado del sistema o información de playlist activa.');
       }
     } catch (error) {
-      console.warn('⚠️ No se pudo verificar el archivo de playlist activa:', error);
+      console.warn('⚠️ No se pudo verificar el estado del sistema:', error);
       console.log('ℹ️ Continuando sin cargar playlist ni iniciar VLC...');
     }
 
@@ -101,19 +112,21 @@ async function createWindow() {
     // Inicializar el servicio de playlist
     await playlistService.initialize();
 
-    // Iniciar el monitor de estado del sistema con un retraso para dar tiempo a que VLC esté preparado
-    setTimeout(() => {
-      stateMonitor = startSystemStateMonitor(30000);
-      console.log('Monitor de estado del sistema iniciado');
-    }, 5000); // Esperar 5 segundos después de iniciar VLC antes de empezar a monitorear
-
     // Solo iniciar VLC si hay una playlist válida configurada
     if (playlistIsValid) {
+      // Iniciar VLC primero, antes de cualquier intento de monitoreo
+      console.log('🚀 Iniciando reproductor VLC...');
       vlcPlayer = new VLCPlayer();
+
+      // Hacer global la instancia de VLC para que otros componentes puedan acceder (incluso antes de iniciar)
+      global.vlcPlayer = vlcPlayer;
+
       const success = await vlcPlayer.start();
       if (!success) {
         console.error('❌ Error al iniciar VLC');
         sendLog('Error al iniciar VLC', 'error');
+        // Si hay error, limpiar la instancia global
+        global.vlcPlayer = null;
       } else {
         console.log('✅ VLC iniciado correctamente con la playlist configurada');
         sendLog('VLC iniciado correctamente', 'success');
@@ -258,6 +271,13 @@ async function createWindow() {
       console.log('ℹ️ Estado actual: No hay playlist configurada');
     }
 
+    // Iniciar el monitor de estado del sistema con un retraso más largo
+    // para dar tiempo a que VLC esté completamente preparado
+    setTimeout(() => {
+      stateMonitor = startSystemStateMonitor(30000);
+      console.log('Monitor de estado del sistema iniciado');
+    }, 10000); // Aumentar a 10 segundos para dar más tiempo a VLC
+
   } catch (error) {
     console.error('Error en la inicialización:', error);
     if (mainWindow) {
@@ -339,6 +359,17 @@ ipcMain.on('start-vlc-with-playlist', async (event, data) => {
     // Crear una nueva instancia de VLC
     console.log('🔄 Creando nueva instancia de VLC...');
     vlcPlayer = new VLCPlayer();
+
+    // Actualizar el estado del sistema con la nueva playlist activa
+    const systemState = await getSystemState();
+    systemState.activePlaylist = {
+      playlistName: data.playlistName,
+      playlistPath: data.playlistPath,
+      fileCount: data.fileCount || 0,
+      currentIndex: 0,
+      isDefault: data.isDefault || false
+    };
+    await saveSystemState(systemState);
 
     // Iniciar VLC con la playlist
     const success = await vlcPlayer.start();

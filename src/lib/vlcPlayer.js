@@ -4,7 +4,7 @@ import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import { appConfig } from '../config/appConfig.mjs';
 import { vlcRequest, vlcCommands } from '../services/vlcService.mjs';
-import { getActivePlaylist } from '../utils/activePlaylist.mjs';
+import { getSystemState } from '../utils/systemState.mjs';
 
 export class VLCPlayer {
     constructor() {
@@ -64,13 +64,26 @@ export class VLCPlayer {
 
     async start() {
         try {
-            // Obtener la playlist activa
-            const activePlaylist = await getActivePlaylist();
-            this.playlistPath = activePlaylist.playlistPath;
+            // Obtener la playlist activa desde el estado del sistema
+            const systemState = await getSystemState();
+            if (!systemState || !systemState.activePlaylist || !systemState.activePlaylist.playlistPath) {
+                throw new Error('No hay información de playlist activa en el estado del sistema');
+            }
+
+            this.playlistPath = systemState.activePlaylist.playlistPath;
 
             // Obtener la ruta de la playlist
             if (!this.playlistPath) {
                 throw new Error('No se encontró la playlist o los videos referenciados');
+            }
+
+            // Verificar si la ruta de la playlist existe
+            try {
+                await fsPromises.access(this.playlistPath);
+                console.log(`✅ Playlist encontrada: ${this.playlistPath}`);
+            } catch (error) {
+                console.error(`❌ No se puede acceder a la playlist: ${this.playlistPath}`);
+                throw new Error(`No se puede acceder a la playlist: ${this.playlistPath}`);
             }
 
             // Verificar el formato de la playlist para asegurar que solo contiene nombres de archivo
@@ -79,6 +92,9 @@ export class VLCPlayer {
                 const lines = content.split('\n');
                 const videoEntries = lines.filter(line => line.trim() && !line.startsWith('#'));
                 const playlistDir = path.dirname(this.playlistPath);
+
+                console.log(`📂 Directorio de la playlist: ${playlistDir}`);
+                console.log(`📄 Entradas de video encontradas: ${videoEntries.length}`);
 
                 // Comprobar si hay rutas en lugar de nombres de archivo
                 const needsUpdate = videoEntries.some(entry => {
@@ -104,6 +120,7 @@ export class VLCPlayer {
 
                     try {
                         await fsPromises.access(videoPath);
+                        console.log(`✅ Video encontrado: ${videoPath}`);
                     } catch (error) {
                         console.error(`❌ No se puede acceder al video: ${videoPath}`);
                         throw new Error(`No se puede acceder al video: ${fileName}`);
@@ -138,6 +155,8 @@ export class VLCPlayer {
                 this.playlistPath             // Ruta de la playlist
             ];
 
+            console.log('🚀 Iniciando VLC con opciones:', options.join(' '));
+
             // Iniciar VLC
             this.process = spawn('vlc', options);
 
@@ -164,16 +183,51 @@ export class VLCPlayer {
             // Implementar un watchdog simple
             this.setupWatchdog();
 
+            // Esperar a que VLC esté listo
+            console.log('⏳ Esperando a que VLC esté listo para recibir comandos...');
+            let vlcReady = false;
+            let attempts = 0;
+            const maxAttempts = 10;
+
+            while (!vlcReady && attempts < maxAttempts) {
+                try {
+                    attempts++;
+                    // Aumentar el tiempo de espera progresivamente
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+
+                    // Intentar conectar con VLC
+                    await vlcRequest('');
+                    vlcReady = true;
+                    console.log(`✅ VLC está listo después de ${attempts} intentos`);
+                } catch (error) {
+                    console.log(`⏳ Intento ${attempts}/${maxAttempts}: VLC aún no está listo: ${error.message}`);
+                    if (attempts >= maxAttempts) {
+                        console.warn(`⚠️ No se pudo verificar que VLC esté listo después de ${maxAttempts} intentos`);
+                        console.log('ℹ️ Continuando de todos modos, es posible que VLC aún se esté iniciando...');
+                    }
+                }
+            }
+
             // Cargar la playlist activa en VLC
             if (this.playlistPath) {
                 setTimeout(async () => {
                     try {
-                        await vlcRequest(`${vlcCommands.play}&input=${encodeURIComponent(this.playlistPath)}`);
-                        console.log(`Playlist cargada: ${this.playlistPath}`);
+                        // Comprobar si VLC está listo antes de intentar cargar la playlist
+                        const status = await vlcRequest('');
+                        console.log(`✅ Verificación final: VLC está listo para cargar playlist. Estado: ${status.state || 'desconocido'}`);
+
+                        // Primero limpiar la lista de reproducción actual
+                        await vlcRequest(vlcCommands.clear);
+                        console.log('✅ Lista de reproducción actual limpiada');
+
+                        // Luego añadir y reproducir la nueva playlist
+                        const playlistUri = encodeURIComponent(this.playlistPath);
+                        await vlcRequest(vlcCommands.play, 'GET', { input: playlistUri });
+                        console.log(`✅ Playlist cargada: ${this.playlistPath}`);
                     } catch (error) {
-                        console.error('Error al cargar la playlist:', error);
+                        console.error('❌ Error al cargar la playlist:', error);
                     }
-                }, 2000); // Esperar 2 segundos para que VLC esté listo
+                }, 3000); // Aumentar a 3 segundos para dar más tiempo a VLC
             }
 
             return true;
@@ -244,9 +298,23 @@ export class VLCPlayer {
             // Guardar la ruta de la playlist
             this.playlistPath = playlistPath;
 
+            // Comprobar si la playlist existe
+            try {
+                await fsPromises.access(playlistPath);
+                console.log(`✅ Playlist a cargar existe: ${playlistPath}`);
+            } catch (error) {
+                console.error(`❌ No se puede acceder a la playlist: ${playlistPath}`);
+                throw new Error(`No se puede acceder a la playlist: ${playlistPath}`);
+            }
+
             // Cargar la playlist usando el API HTTP
-            await vlcRequest(`${vlcCommands.clear}`); // Limpiar la lista actual
-            await vlcRequest(`${vlcCommands.play}&input=${encodeURIComponent(playlistPath)}`);
+            // Primero limpiar la lista de reproducción actual
+            await vlcRequest(vlcCommands.clear);
+            console.log('✅ Lista de reproducción actual limpiada');
+
+            // Luego añadir y reproducir la nueva playlist
+            const playlistUri = encodeURIComponent(playlistPath);
+            await vlcRequest(vlcCommands.play, 'GET', { input: playlistUri });
 
             console.log(`✅ Playlist cargada en VLC existente: ${playlistPath}`);
             return true;

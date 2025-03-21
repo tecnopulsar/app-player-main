@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getActivePlaylist, updateActivePlaylist } from '../utils/activePlaylist.mjs';
+import { getSystemState, saveSystemState } from '../utils/systemState.mjs';
 import { getPlaylistDetails } from './vlcEndpoints.mjs';
 import { VLCPlayer } from '../lib/vlcPlayer.js';
 
@@ -25,10 +25,18 @@ let vlcInstance = null;
  */
 router.get('/', async (req, res) => {
     try {
-        const activePlaylist = await getActivePlaylist();
+        const systemState = await getSystemState();
         res.json({
             success: true,
-            activePlaylist
+            activePlaylist: systemState.activePlaylist || {
+                playlistName: null,
+                playlistPath: null,
+                lastLoaded: null,
+                isActive: false,
+                isDefault: false,
+                currentIndex: 0,
+                fileCount: 0
+            }
         });
     } catch (error) {
         console.error('Error al obtener la playlist activa:', error);
@@ -74,10 +82,17 @@ router.post('/', async (req, res) => {
         }
 
         // Actualizar la playlist activa
-        const updatedPlaylist = await updateActivePlaylist({
+        const systemState = await getSystemState();
+        systemState.activePlaylist = {
             playlistName: playlistName,
-            playlistPath: playlist.path
-        });
+            playlistPath: playlist.path,
+            lastLoaded: new Date().toISOString(),
+            isActive: true,
+            isDefault: playlistName === (systemState.config?.defaultPlaylistName || 'default'),
+            currentIndex: 0,
+            fileCount: playlist.fileCount || 0
+        };
+        await saveSystemState(systemState);
 
         // Verificar si necesitamos iniciar o reiniciar VLC
         try {
@@ -107,7 +122,7 @@ router.post('/', async (req, res) => {
                         global.mainWindow.webContents.send('vlc-started', {
                             success: true,
                             message: `VLC iniciado con la playlist: ${playlistName}`,
-                            playlist: updatedPlaylist
+                            playlist: systemState.activePlaylist
                         });
                     }
                 } else {
@@ -115,7 +130,7 @@ router.post('/', async (req, res) => {
                     return res.status(500).json({
                         success: false,
                         message: 'Error al iniciar VLC con la playlist actualizada',
-                        activePlaylist: updatedPlaylist
+                        activePlaylist: systemState.activePlaylist
                     });
                 }
             } else {
@@ -147,7 +162,7 @@ router.post('/', async (req, res) => {
                     global.mainWindow.webContents.send('playlist-updated', {
                         success: true,
                         message: `Playlist actualizada: ${playlistName}`,
-                        playlist: updatedPlaylist
+                        playlist: systemState.activePlaylist
                     });
                 }
             }
@@ -155,7 +170,7 @@ router.post('/', async (req, res) => {
             return res.json({
                 success: true,
                 message: `Playlist '${playlistName}' establecida como activa y cargada en VLC`,
-                activePlaylist: updatedPlaylist
+                activePlaylist: systemState.activePlaylist
             });
 
         } catch (vlcError) {
@@ -166,7 +181,7 @@ router.post('/', async (req, res) => {
                 success: true,
                 warning: `La playlist fue establecida pero hubo un error al iniciar/actualizar VLC: ${vlcError.message}`,
                 message: `Playlist '${playlistName}' establecida como activa`,
-                activePlaylist: updatedPlaylist
+                activePlaylist: systemState.activePlaylist
             });
         }
     } catch (error) {

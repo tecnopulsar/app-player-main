@@ -3,7 +3,6 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 import os from 'os';
 import axios from 'axios';
-import { getActivePlaylist } from './activePlaylist.mjs';
 import playlistManager from './playlistManager.mjs';
 import { getConfig } from '../config/appConfig.mjs';
 
@@ -133,7 +132,7 @@ async function vlcRequest(endpoint = '', method = 'GET', params = {}, timeout = 
 }
 
 // Función para obtener el estado de VLC con reintentos
-async function getVLCStatus(maxRetries = 3, retryDelay = 2000) {
+async function getVLCStatus(maxRetries = 5, retryDelay = 3000) {
     let retries = 0;
 
     // Función interna para intentar obtener el estado
@@ -175,10 +174,13 @@ async function getVLCStatus(maxRetries = 3, retryDelay = 2000) {
 
             // Incrementar contador de reintentos y esperar antes de reintentar
             retries++;
-            console.log(`Intento ${retries}/${maxRetries} fallido, reintentando en ${retryDelay}ms...`);
+
+            // Aumentar progresivamente el tiempo de espera con cada intento
+            const adjustedDelay = retryDelay * (1 + (retries * 0.5));
+            console.log(`Intento ${retries}/${maxRetries} fallido, reintentando en ${adjustedDelay}ms...`);
 
             // Esperar el tiempo de retraso
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            await new Promise(resolve => setTimeout(resolve, adjustedDelay));
 
             // Reintentar recursivamente
             return tryGetStatus();
@@ -323,56 +325,63 @@ function getAppInfo() {
 // Función principal para obtener todo el estado del sistema
 async function getSystemState() {
     try {
-        // Obtener playlist activa
-        const activePlaylist = await getActivePlaylist();
-        let playlistDetails = null;
+        // Intentar cargar primero el estado guardado
+        const savedState = await loadSystemState();
 
-        if (activePlaylist) {
-            try {
-                // Intentar obtener los detalles usando la propiedad playlistName
-                if (activePlaylist.playlistName) {
-                    playlistDetails = await playlistManager.getPlaylistDetails(activePlaylist.playlistName);
+        // Si existe un estado guardado, lo usamos como base
+        let baseState = null;
+        if (savedState) {
+            baseState = savedState;
+
+            // Verificar si la playlist activa existe y es accesible
+            if (baseState.activePlaylist && baseState.activePlaylist.playlistPath) {
+                try {
+                    await fsPromises.access(baseState.activePlaylist.playlistPath);
+                    console.log(`✅ Verificación de playlist activa: ${baseState.activePlaylist.playlistPath} existe`);
+                } catch (error) {
+                    console.warn(`⚠️ La playlist activa no existe en la ruta: ${baseState.activePlaylist.playlistPath}`);
+                    console.log('ℹ️ Buscando playlist por nombre en la carpeta estándar de playlists...');
+
+                    const playlistName = baseState.activePlaylist.playlistName;
+                    if (playlistName) {
+                        const config = getConfig();
+                        const standardPath = path.join(config.paths.playlists, playlistName, `${playlistName}.m3u`);
+
+                        try {
+                            await fsPromises.access(standardPath);
+                            console.log(`✅ Playlist encontrada en ubicación estándar: ${standardPath}`);
+                            baseState.activePlaylist.playlistPath = standardPath;
+                        } catch (altError) {
+                            console.warn(`⚠️ No se encontró la playlist en ubicación estándar: ${standardPath}`);
+                        }
+                    }
                 }
-                // Si no hay playlistName pero hay playlist, intentar con esa propiedad
-                else if (activePlaylist.playlist) {
-                    // Extraer el nombre de la playlist de la ruta
-                    const playlistPath = activePlaylist.playlist;
-                    const playlistName = path.basename(path.dirname(playlistPath));
-                    playlistDetails = await playlistManager.getPlaylistDetails(playlistName);
-                }
-            } catch (error) {
-                console.log(`Error al obtener detalles de la playlist: ${error.message}`);
             }
         }
 
-        // Obtener toda la información del sistema
+        // Obtener toda la información actualizada del sistema
         const [systemInfo, storageInfo, vlcStatus] = await Promise.all([
             getSystemInfo(),
             getStorageInfo(),
             getVLCStatus()
         ]);
 
-        // Extraer el nombre de la playlist de manera segura
-        let playlistName = null;
-        if (activePlaylist?.playlistName) {
-            playlistName = activePlaylist.playlistName;
-        } else if (activePlaylist?.playlist) {
-            playlistName = path.basename(path.dirname(activePlaylist.playlist));
-        }
-
-        return {
+        // Crear el estado actualizado
+        const newState = {
             timestamp: new Date().toISOString(),
             system: systemInfo,
             storage: storageInfo,
             vlc: vlcStatus,
             app: getAppInfo(),
-            activePlaylist: {
-                playlistName: playlistName,
-                playlistPath: activePlaylist?.playlist || null,
-                fileCount: playlistDetails?.files?.length || 0,
-                currentIndex: activePlaylist?.currentIndex || 0
+            activePlaylist: baseState?.activePlaylist || {
+                playlistName: null,
+                playlistPath: null,
+                fileCount: 0,
+                currentIndex: 0
             }
         };
+
+        return newState;
     } catch (error) {
         console.error(`Error al obtener estado del sistema: ${error.message}`);
         throw error;
@@ -380,14 +389,30 @@ async function getSystemState() {
 }
 
 // Función para guardar el estado del sistema
-async function saveSystemState() {
+async function saveSystemState(providedState = null) {
     try {
-        const state = await getSystemState();
+        // Si no se proporciona un estado, obtenerlo
+        const state = providedState || await getSystemState();
 
         // Crear el directorio si no existe
         const dir = path.dirname(STATE_FILE_PATH);
         if (!fs.existsSync(dir)) {
             await fsPromises.mkdir(dir, { recursive: true });
+        }
+
+        // Asegurar que existe la sección activePlaylist
+        if (!state.activePlaylist) {
+            state.activePlaylist = {
+                playlistName: null,
+                playlistPath: null,
+                fileCount: 0,
+                currentIndex: 0
+            };
+        }
+
+        // Actualizar timestamp solo si no se proporcionó un estado
+        if (!providedState) {
+            state.timestamp = new Date().toISOString();
         }
 
         // Guardar el estado en formato JSON
@@ -406,7 +431,19 @@ async function loadSystemState() {
     try {
         if (fs.existsSync(STATE_FILE_PATH)) {
             const data = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
-            return JSON.parse(data);
+            const state = JSON.parse(data);
+
+            // Asegurar que existe la sección activePlaylist
+            if (!state.activePlaylist) {
+                state.activePlaylist = {
+                    playlistName: null,
+                    playlistPath: null,
+                    fileCount: 0,
+                    currentIndex: 0
+                };
+            }
+
+            return state;
         }
 
         console.log(`Archivo de estado no encontrado en: ${STATE_FILE_PATH}`);

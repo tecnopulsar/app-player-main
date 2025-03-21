@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-03-21T13:36:14.982Z",
+  "timestamp": "2025-03-21T19:50:10.365Z",
   "system": {
     "hostname": "base",
     "platform": "linux",
@@ -7,12 +7,12 @@
     "release": "6.12.18-v8+",
     "cpus": 4,
     "totalMem": 3923357696,
-    "freeMem": 1725267968,
-    "uptime": 56976.33,
+    "freeMem": 2002153472,
+    "uptime": 79411.68,
     "loadavg": [
-      1.01,
-      0.7,
-      0.63
+      0.09,
+      0.28,
+      0.47
     ],
     "network": {
       "lo": {
@@ -34,7 +34,7 @@
         "internal": false
       }
     },
-    "timestamp": "2025-03-21T13:36:14.931Z"
+    "timestamp": "2025-03-21T19:50:10.276Z"
   },
   "storage": {
     "videosDirectory": "./public/videos",
@@ -45,23 +45,23 @@
       "fileCount": 0
     },
     "totalSpace": 61641601024,
-    "freeSpace": 42484084736,
-    "usedSpace": 19157516288,
-    "timestamp": "2025-03-21T13:36:14.962Z"
+    "freeSpace": 42274390016,
+    "usedSpace": 19367211008,
+    "timestamp": "2025-03-21T19:50:10.340Z"
   },
   "vlc": {
     "connected": true,
-    "playing": true,
+    "playing": false,
     "paused": false,
-    "stopped": false,
-    "currentItem": "ForBiggerBlazes.mp4",
-    "position": 0.24304088950157,
-    "time": 3,
-    "length": 15,
+    "stopped": true,
+    "currentItem": "",
+    "position": 0,
+    "time": 0,
+    "length": 0,
     "volume": 0,
     "random": false,
     "repeat": false,
-    "fullscreen": false
+    "fullscreen": 0
   },
   "app": {
     "deviceId": "9c30157f",
@@ -77,13 +77,16 @@
       "port": 8080
     },
     "version": "1.0.0",
-    "startTime": "2025-03-21T13:36:14.982Z",
+    "startTime": "2025-03-21T19:50:10.365Z",
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
     "playlistName": "VideosCortos",
-    "playlistPath": null,
-    "fileCount": 3,
-    "currentIndex": 0
+    "playlistPath": "playlists/VideosCortos/VideosCortos.m3u",
+    "lastLoaded": "2025-03-21T19:24:19.452Z",
+    "isActive": true,
+    "isDefault": false,
+    "currentIndex": 0,
+    "fileCount": 3
   }
 }
