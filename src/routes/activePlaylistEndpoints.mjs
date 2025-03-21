@@ -10,8 +10,8 @@ try {
     const electron = await import('electron');
     global = electron.default;
 } catch (e) {
-    console.log('⚠️ Módulo Electron no disponible en este contexto. La comunicación IPC no funcionará.');
-    global = { mainWindow: null };
+    console.log('ℹ️ Módulo Electron no disponible en este contexto. Esto es normal en un entorno de servidor.');
+    global = { mainWindow: null, vlcPlayer: null };
 }
 
 const router = Router();

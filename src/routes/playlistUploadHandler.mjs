@@ -7,14 +7,24 @@ import { appConfig } from '../config/appConfig.mjs';
 import { updateActivePlaylist } from '../utils/activePlaylist.mjs';
 
 // Importar electron para comunicación con el proceso principal
-let global;
-try {
-    // Acceder al objeto global de Electron si está disponible
-    global = require('electron').remote.getGlobal('mainWindow');
-} catch (e) {
-    console.log('⚠️ Módulo Electron no disponible en este contexto. La comunicación IPC no funcionará.');
-    global = { mainWindow: null };
+let global = null;
+
+// Función segura para acceder a Electron
+async function getElectronGlobal() {
+    try {
+        // En un entorno ESM, usar import dinámico
+        const electron = await import('electron');
+        return electron.default;
+    } catch (e) {
+        console.log('ℹ️ Módulo Electron no disponible en este contexto. Esto es normal en un entorno de servidor.');
+        return { mainWindow: null, vlcPlayer: null };
+    }
 }
+
+// Inicializar global en segundo plano
+getElectronGlobal().then(result => {
+    global = result;
+});
 
 const router = express.Router();
 

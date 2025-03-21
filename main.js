@@ -298,24 +298,6 @@ process.on('unhandledRejection', (error) => {
   console.error('Promesa rechazada no manejada:', error);
 });
 
-// Manejar el evento 'start-timer' desde el frontend
-ipcMain.on('start-timer', (event) => {
-  exec(`python3 ${join(__dirname, 'contador.py')}`, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error ejecutando el script: ${error.message}`);
-      event.reply('timer-completed', 'Error al iniciar el contador');
-      return;
-    }
-    if (stderr) {
-      console.error(`stderr: ${stderr}`);
-      event.reply('timer-completed', 'Error en el script');
-      return;
-    }
-    console.log(`stdout: ${stdout}`);
-    event.reply('timer-completed', '¡Tiempo cumplido!');
-  });
-});
-
 // Manejar el evento para iniciar el reproductor
 ipcMain.on('start-player', async () => {
   // Verificar si VLC no está iniciado por falta de playlist
