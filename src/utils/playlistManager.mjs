@@ -329,7 +329,7 @@ class PlaylistManager {
             }
 
             const files = await fsPromises.readdir(playlistDir);
-            const m3uFiles = files.filter(file => file.endsWith('.m3u'));
+            const m3uFiles = files.filter(file => file.endsWith('.m3u') && !file.endsWith('.m3u.temp'));
 
             if (m3uFiles.length === 0) {
                 return null;
@@ -350,23 +350,35 @@ class PlaylistManager {
                     return { fileName, filePath };
                 });
 
-            // Crear una versión temporal de la playlist con rutas absolutas correctas
-            const tempPlaylistPath = `${playlistPath}.temp`;
-            await fsPromises.writeFile(
-                tempPlaylistPath,
-                `#EXTM3U\n${videoFiles.map(vf => vf.filePath).join('\n')}\n`
-            );
+            // Ya no crear archivo temporal, usar directamente el archivo .m3u original
+            // Actualizar el archivo .m3u si es necesario para asegurar que contiene solo nombres de archivo
+            // Verificar primero si hay rutas completas en lugar de solo nombres de archivo
+            const needsUpdate = lines.some(line => {
+                if (line.trim() && !line.startsWith('#')) {
+                    const fileName = path.basename(line.trim());
+                    return line.trim() !== fileName; // Si no son iguales, hay una ruta
+                }
+                return false;
+            });
+
+            if (needsUpdate) {
+                console.log(`⚠️ Actualizando archivo de playlist ${playlistPath} para usar solo nombres de archivo`);
+                // Reescribir el archivo .m3u con solo nombres de archivo
+                await fsPromises.writeFile(
+                    playlistPath,
+                    `#EXTM3U\n${videoFiles.map(vf => vf.fileName).join('\n')}\n`
+                );
+            }
 
             return {
                 name,
-                path: tempPlaylistPath, // Usar la playlist temporal con rutas absolutas
+                path: playlistPath, // Usar el archivo original, no uno temporal
                 files: videoFiles,
-                totalFiles: videoFiles.length,
-                isDefault: name === this.defaultPlaylistName
+                totalFiles: videoFiles.length
             };
         } catch (error) {
             console.error(`❌ Error al obtener detalles de la playlist '${name}':`, error);
-            return null; // Cambiar para retornar null en lugar de lanzar el error
+            throw error;
         }
     }
 

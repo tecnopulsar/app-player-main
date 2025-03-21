@@ -446,3 +446,41 @@ ipcMain.on('remote-control', async (event, { action, data }) => {
     mainWindow?.webContents.send('player-error', `Error: ${error.message}`);
   }
 });
+
+// Manejar eventos de actualización de playlist y estado de VLC
+ipcMain.on('vlc-started', async (event, data) => {
+  console.log('📣 Evento recibido: VLC iniciado');
+
+  // Actualizar la referencia global a VLC
+  if (data && data.vlcInstance) {
+    vlcPlayer = data.vlcInstance;
+    global.vlcPlayer = vlcPlayer;
+    console.log('✅ Instancia de VLC actualizada globalmente');
+  }
+
+  // Actualizar el estado de VLC en el frontend inmediatamente
+  try {
+    const vlcStatus = await getVLCStatus();
+    mainWindow.webContents.send('vlc-status-update', {
+      vlcStatus,
+      playlistInfo: data.playlist || null
+    });
+  } catch (error) {
+    console.error('Error al obtener estado de VLC tras inicio:', error);
+  }
+});
+
+ipcMain.on('playlist-updated', async (event, data) => {
+  console.log('📣 Evento recibido: Playlist actualizada');
+
+  // Actualizar el estado de VLC en el frontend inmediatamente
+  try {
+    const vlcStatus = await getVLCStatus();
+    mainWindow.webContents.send('vlc-status-update', {
+      vlcStatus,
+      playlistInfo: data.playlist || null
+    });
+  } catch (error) {
+    console.error('Error al obtener estado de VLC tras actualización de playlist:', error);
+  }
+});

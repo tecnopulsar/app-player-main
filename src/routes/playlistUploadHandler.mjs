@@ -361,19 +361,66 @@ router.post('/set-default/:name', async (req, res) => {
 
         // Iniciar VLC con la playlist por defecto
         try {
-            // Notificar al proceso principal para iniciar VLC
-            console.log(`✅ Enviando evento para iniciar VLC con playlist por defecto: ${name}`);
+            // Verificar si hay una instancia global de VLC
+            const electron = await import('electron');
+            const global = electron.default;
 
-            // Si hay una ventana principal registrada en el IPC, enviar el evento
-            if (global.mainWindow && !global.mainWindow.isDestroyed()) {
-                global.mainWindow.webContents.send('start-vlc-with-playlist', {
-                    playlistName: name,
-                    playlistPath: playlistPath
-                });
+            if (!global.vlcPlayer) {
+                console.log('ℹ️ No hay instancia de VLC. Iniciando una nueva...');
+
+                // Importar VLCPlayer de forma dinámica
+                const { VLCPlayer } = await import('../lib/vlcPlayer.js');
+                const vlcInstance = new VLCPlayer();
+
+                // Iniciar VLC con la playlist establecida por defecto
+                const startSuccess = await vlcInstance.start();
+
+                if (startSuccess) {
+                    console.log(`✅ VLC iniciado correctamente con la playlist por defecto: ${name}`);
+
+                    // Asignar la instancia a la variable global para que otros componentes puedan acceder
+                    global.vlcPlayer = vlcInstance;
+
+                    // Notificar al proceso principal que VLC ha sido iniciado
+                    if (global.mainWindow && !global.mainWindow.isDestroyed()) {
+                        global.mainWindow.webContents.send('vlc-started', {
+                            success: true,
+                            message: `VLC iniciado con la playlist por defecto: ${name}`,
+                        });
+                    }
+                } else {
+                    console.error('❌ Error al iniciar VLC con la playlist por defecto');
+                }
+            } else {
+                console.log('ℹ️ VLC ya está iniciado. Actualizando playlist...');
+
+                // Si VLC ya está iniciado, simplemente cargar la nueva playlist
+                if (global.vlcPlayer.loadPlaylist) {
+                    await global.vlcPlayer.loadPlaylist(playlistPath);
+                    console.log(`✅ Playlist por defecto actualizada en VLC: ${name}`);
+                } else {
+                    // Si no tiene el método loadPlaylist, reiniciar VLC
+                    if (global.vlcPlayer.restart) {
+                        const success = await global.vlcPlayer.restart();
+                        if (success) {
+                            console.log(`✅ VLC reiniciado con la nueva playlist por defecto: ${name}`);
+                        } else {
+                            console.error('❌ Error al reiniciar VLC');
+                        }
+                    }
+                }
+
+                // Notificar al proceso principal sobre la actualización
+                if (global.mainWindow && !global.mainWindow.isDestroyed()) {
+                    global.mainWindow.webContents.send('playlist-updated', {
+                        success: true,
+                        message: `Playlist por defecto actualizada: ${name}`
+                    });
+                }
             }
         } catch (vlcError) {
-            console.error('❌ Error al solicitar inicio de VLC:', vlcError);
-            // Continuar con la respuesta incluso si la solicitud de VLC falló
+            console.error('❌ Error al gestionar VLC:', vlcError);
+            // Continuar con la respuesta incluso si VLC no inició correctamente
         }
 
         return res.json({

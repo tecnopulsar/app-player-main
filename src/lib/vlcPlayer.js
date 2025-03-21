@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import { appConfig } from '../config/appConfig.mjs';
 import { vlcRequest, vlcCommands } from '../services/vlcService.mjs';
 import { getActivePlaylist } from '../utils/activePlaylist.mjs';
@@ -19,11 +20,11 @@ export class VLCPlayer {
 
             // Verificar que el archivo existe
             try {
-                await fs.access(playlistPath);
+                await fsPromises.access(playlistPath);
                 console.log('Playlist encontrada en:', playlistPath);
 
                 // Leer el contenido de la playlist para verificar que es válida
-                const playlistContent = await fs.readFile(playlistPath, 'utf8');
+                const playlistContent = await fsPromises.readFile(playlistPath, 'utf8');
                 console.log('Contenido de la playlist:', playlistContent);
 
                 // Verificar que la playlist contiene entradas válidas
@@ -42,7 +43,7 @@ export class VLCPlayer {
                     const videoPath = path.join(playlistDir, fileName);
 
                     try {
-                        await fs.access(videoPath);
+                        await fsPromises.access(videoPath);
                         console.log('Video encontrado:', videoPath);
                     } catch (error) {
                         console.error('Error: No se puede acceder al video:', videoPath);
@@ -70,6 +71,47 @@ export class VLCPlayer {
             // Obtener la ruta de la playlist
             if (!this.playlistPath) {
                 throw new Error('No se encontró la playlist o los videos referenciados');
+            }
+
+            // Verificar el formato de la playlist para asegurar que solo contiene nombres de archivo
+            try {
+                const content = await fsPromises.readFile(this.playlistPath, 'utf8');
+                const lines = content.split('\n');
+                const videoEntries = lines.filter(line => line.trim() && !line.startsWith('#'));
+                const playlistDir = path.dirname(this.playlistPath);
+
+                // Comprobar si hay rutas en lugar de nombres de archivo
+                const needsUpdate = videoEntries.some(entry => {
+                    const fileName = path.basename(entry.trim());
+                    return entry.trim() !== fileName;
+                });
+
+                // Si se necesita actualizar, reescribir la playlist con solo nombres de archivo
+                if (needsUpdate) {
+                    console.log(`⚠️ Corrigiendo playlist ${this.playlistPath} para usar solo nombres de archivo`);
+                    const updatedContent = '#EXTM3U\n' + videoEntries
+                        .map(entry => path.basename(entry.trim()))
+                        .join('\n');
+
+                    await fsPromises.writeFile(this.playlistPath, updatedContent);
+                    console.log('✅ Playlist corregida correctamente');
+                }
+
+                // Verificar que los archivos de video existan
+                for (const entry of videoEntries) {
+                    const fileName = path.basename(entry.trim());
+                    const videoPath = path.join(playlistDir, fileName);
+
+                    try {
+                        await fsPromises.access(videoPath);
+                    } catch (error) {
+                        console.error(`❌ No se puede acceder al video: ${videoPath}`);
+                        throw new Error(`No se puede acceder al video: ${fileName}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Error al verificar la playlist:', error);
+                throw error;
             }
 
             const options = [
@@ -175,53 +217,53 @@ export class VLCPlayer {
         };
     }
 
+    async stop() {
+        if (this.process) {
+            // Matar el proceso de VLC
+            this.process.kill();
+            this.process = null;
+            console.log('VLC detenido');
+            return true;
+        }
+        console.log('No hay proceso de VLC para detener');
+        return false;
+    }
+
     /**
-     * Reinicia el reproductor VLC
-     * @returns {Promise<boolean>} true si se reinició correctamente
+     * Carga una playlist en VLC sin reiniciar el proceso
+     * @param {string} playlistPath Ruta a la playlist a cargar
+     * @returns {Promise<boolean>} Éxito de la operación
      */
-    async restart() {
+    async loadPlaylist(playlistPath) {
         try {
-            console.log('⏱️ Reiniciando VLC...');
-
-            // Detener el proceso actual de VLC si existe
-            if (this.process) {
-                console.log('🛑 Deteniendo instancia previa de VLC...');
-                await this.stop();
-
-                // Esperar un momento para asegurar que el proceso se ha cerrado correctamente
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-
-            // Obtener la playlist activa actualizada
-            const activePlaylist = await getActivePlaylist();
-            this.playlistPath = activePlaylist.playlistPath;
-
-            console.log(`🎬 Reiniciando VLC con playlist: ${activePlaylist.playlistName}`);
-
-            // Iniciar VLC de nuevo
-            const success = await this.start();
-
-            if (success) {
-                console.log('✅ VLC reiniciado correctamente');
-                return true;
-            } else {
-                console.error('❌ Error al reiniciar VLC');
+            if (!this.process) {
+                console.error('❌ No hay proceso de VLC activo para cargar la playlist');
                 return false;
             }
+
+            // Guardar la ruta de la playlist
+            this.playlistPath = playlistPath;
+
+            // Cargar la playlist usando el API HTTP
+            await vlcRequest(`${vlcCommands.clear}`); // Limpiar la lista actual
+            await vlcRequest(`${vlcCommands.play}&input=${encodeURIComponent(playlistPath)}`);
+
+            console.log(`✅ Playlist cargada en VLC existente: ${playlistPath}`);
+            return true;
         } catch (error) {
-            console.error('❌ Error durante el reinicio de VLC:', error);
+            console.error(`❌ Error al cargar la playlist en VLC: ${error.message}`);
             return false;
         }
     }
 
-    stop() {
-        if (this.process) {
-            if (this.watchdog) {
-                this.watchdog.stop();
-            }
-            this.process.kill();
-            this.process = null;
-        }
+    restart() {
+        return new Promise(async (resolve) => {
+            await this.stop();
+            setTimeout(async () => {
+                const success = await this.start();
+                resolve(success);
+            }, 1000);
+        });
     }
 
     async pause() {

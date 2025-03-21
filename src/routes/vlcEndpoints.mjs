@@ -264,23 +264,6 @@ router.post('/playlist/load/:name', async (req, res) => {
             playlistPath: playlist.path
         });
 
-        // Intentar iniciar VLC si no está ejecutándose
-        try {
-            // Notificar al proceso principal para iniciar VLC con la playlist
-            console.log(`✅ Enviando evento para iniciar VLC con playlist: ${playlistName}`);
-
-            // Si hay una ventana principal registrada en el IPC, enviar el evento
-            if (global && global.mainWindow && !global.mainWindow.isDestroyed()) {
-                global.mainWindow.webContents.send('start-vlc-with-playlist', {
-                    playlistName: playlistName,
-                    playlistPath: playlist.path
-                });
-            }
-        } catch (vlcError) {
-            console.error('❌ Error al solicitar inicio de VLC:', vlcError);
-            // Continuar con la respuesta incluso si la solicitud de VLC falló
-        }
-
         res.json({
             success: true,
             message: `Playlist '${playlistName}' cargada correctamente`,
@@ -392,7 +375,7 @@ export async function getPlaylistDetails(name) {
         }
 
         const files = await fsPromises.readdir(playlistDir);
-        const m3uFiles = files.filter(file => file.endsWith('.m3u'));
+        const m3uFiles = files.filter(file => file.endsWith('.m3u') && !file.endsWith('.m3u.temp'));
 
         if (m3uFiles.length === 0) {
             return null;
@@ -413,22 +396,34 @@ export async function getPlaylistDetails(name) {
                 return { fileName, filePath };
             });
 
-        // Crear una versión temporal de la playlist con rutas absolutas correctas
-        const tempPlaylistPath = `${playlistPath}.temp`;
-        await fsPromises.writeFile(
-            tempPlaylistPath,
-            `#EXTM3U\n${videoFiles.map(vf => vf.filePath).join('\n')}\n`
-        );
+        // Ya no crear archivo temporal, usar directamente el archivo .m3u original
+        // Actualizar el archivo .m3u si es necesario para asegurar que contiene solo nombres de archivo
+        const needsUpdate = lines.some(line => {
+            if (line.trim() && !line.startsWith('#')) {
+                const fileName = path.basename(line.trim());
+                return line.trim() !== fileName; // Si no son iguales, hay una ruta
+            }
+            return false;
+        });
+
+        if (needsUpdate) {
+            console.log(`⚠️ Actualizando archivo de playlist ${playlistPath} para usar solo nombres de archivo`);
+            // Reescribir el archivo .m3u con solo nombres de archivo
+            await fsPromises.writeFile(
+                playlistPath,
+                `#EXTM3U\n${videoFiles.map(vf => vf.fileName).join('\n')}\n`
+            );
+        }
 
         return {
             name,
-            path: tempPlaylistPath, // Usar la playlist temporal con rutas absolutas
+            path: playlistPath, // Usar el archivo original, no uno temporal
             files: videoFiles,
             totalFiles: videoFiles.length
         };
     } catch (error) {
         console.error(`Error al obtener detalles de la playlist '${name}':`, error);
-        throw error;
+        return null;
     }
 }
 
