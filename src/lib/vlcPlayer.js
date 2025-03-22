@@ -6,11 +6,86 @@ import { appConfig } from '../config/appConfig.mjs';
 import { vlcRequest, vlcCommands } from '../services/vlcService.mjs';
 import { getActivePlaylist } from '../utils/activePlaylist.mjs';
 
+// Instancia singleton
+let instance = null;
+
+// Acceso seguro a global
+let globalObj;
+try {
+    // Intenta acceder al objeto global de Electron
+    // Esta importación dinámica no es soportada en ESM estricto, por lo que usamos un try/catch
+    const electron = await import('electron');
+    globalObj = electron.default;
+} catch (e) {
+    console.log('ℹ️ Objeto global de Electron no disponible en este contexto. Esto es normal en entornos de servidor o de prueba.');
+    // Crear un objeto global local como fallback
+    globalObj = {
+        mainWindow: null,
+        vlcPlayer: null,
+        // Podemos agregar un método para actualizar el vlcPlayer
+        setVLCPlayer: function (player) {
+            this.vlcPlayer = player;
+        }
+    };
+}
+
 export class VLCPlayer {
     constructor() {
+        // Implementar patrón singleton
+        if (instance) {
+            console.log('⚠️ Advertencia: Se intentó crear una nueva instancia de VLCPlayer, devolviendo la instancia existente.');
+            return instance;
+        }
+
         this.process = null;
         this.playlistPath = null;
         this.watchdog = null;
+
+        // Guardar la instancia singleton
+        instance = this;
+
+        // Asignar la instancia al objeto global
+        if (globalObj) {
+            globalObj.vlcPlayer = this;
+        }
+
+        console.log('✅ Nueva instancia de VLCPlayer creada correctamente');
+    }
+
+    /**
+     * Obtiene la instancia de VLCPlayer (singleton)
+     * @returns {VLCPlayer} La instancia de VLCPlayer
+     */
+    static getInstance() {
+        if (!instance) {
+            instance = new VLCPlayer();
+            console.log('📌 Instancia de VLCPlayer creada mediante getInstance()');
+        } else {
+            console.log('📌 Reutilizando instancia existente de VLCPlayer');
+        }
+
+        // Asegurar que la instancia global está actualizada
+        if (globalObj) {
+            globalObj.vlcPlayer = instance;
+        }
+
+        return instance;
+    }
+
+    /**
+     * Reinicia la instancia singleton (solo para uso en pruebas o reinicio total)
+     */
+    static resetInstance() {
+        if (instance && instance.process) {
+            try {
+                instance.process.kill();
+                console.log('🔄 Instancia anterior de VLC eliminada');
+            } catch (error) {
+                console.error('❌ Error al eliminar instancia anterior:', error);
+            }
+        }
+        instance = null;
+        console.log('🔄 Singleton de VLCPlayer reiniciado');
     }
 
     async getPlaylistPath() {
@@ -258,11 +333,27 @@ export class VLCPlayer {
 
     restart() {
         return new Promise(async (resolve) => {
+            console.log('🔄 Reiniciando VLC (misma instancia)...');
             await this.stop();
-            setTimeout(async () => {
-                const success = await this.start();
-                resolve(success);
-            }, 1000);
+
+            // Esperar antes de reiniciar
+            console.log('⏳ Esperando antes de reiniciar VLC...');
+            await new Promise(waitResolve => setTimeout(waitResolve, 1000));
+
+            // Reiniciar VLC con la misma instancia
+            const success = await this.start();
+
+            if (success) {
+                console.log('✅ VLC reiniciado correctamente');
+                // Actualizar la referencia global para asegurar consistencia
+                if (globalObj) {
+                    globalObj.vlcPlayer = this;
+                }
+            } else {
+                console.error('❌ Error al reiniciar VLC');
+            }
+
+            resolve(success);
         });
     }
 

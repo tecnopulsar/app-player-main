@@ -380,7 +380,7 @@ router.post('/set-default/:name', async (req, res) => {
 
                 // Importar VLCPlayer de forma dinámica
                 const { VLCPlayer } = await import('../lib/vlcPlayer.js');
-                const vlcInstance = new VLCPlayer();
+                const vlcInstance = VLCPlayer.getInstance();
 
                 // Iniciar VLC con la playlist establecida por defecto
                 const startSuccess = await vlcInstance.start();

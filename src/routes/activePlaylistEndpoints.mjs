@@ -90,7 +90,7 @@ router.post('/', async (req, res) => {
 
                 // Crear una nueva instancia de VLC si no existe
                 if (!vlcInstance) {
-                    vlcInstance = new VLCPlayer();
+                    vlcInstance = VLCPlayer.getInstance();
                 }
 
                 // Iniciar VLC con la playlist actualizada
@@ -131,7 +131,7 @@ router.post('/', async (req, res) => {
                         await vlcInstance.stop();
                     }
 
-                    vlcInstance = new VLCPlayer();
+                    vlcInstance = VLCPlayer.getInstance();
                     const startSuccess = await vlcInstance.start();
 
                     if (startSuccess) {

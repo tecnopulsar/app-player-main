@@ -5,7 +5,7 @@ import { VLCPlayer } from '../lib/vlcPlayer.js';
 export class WindowManager {
     constructor() {
         this.mainWindow = null;
-        this.vlcPlayer = new VLCPlayer();
+        this.vlcPlayer = VLCPlayer.getInstance();
         this.vlcInitialized = false;
     }
 

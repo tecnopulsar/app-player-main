@@ -109,7 +109,7 @@ async function createWindow() {
 
     // Solo iniciar VLC si hay una playlist válida configurada
     if (playlistIsValid) {
-      vlcPlayer = new VLCPlayer();
+      vlcPlayer = VLCPlayer.getInstance();
       const success = await vlcPlayer.start();
       if (!success) {
         console.error('❌ Error al iniciar VLC');
@@ -338,7 +338,7 @@ ipcMain.on('start-vlc-with-playlist', async (event, data) => {
 
     // Crear una nueva instancia de VLC
     console.log('🔄 Creando nueva instancia de VLC...');
-    vlcPlayer = new VLCPlayer();
+    vlcPlayer = VLCPlayer.getInstance();
 
     // Iniciar VLC con la playlist
     const success = await vlcPlayer.start();
