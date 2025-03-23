@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
     try {
         const templateData = {
             port: appConfig.server.port,
-            directorioVideos: appConfig.paths.videos,
+            directorioVideos: appConfig.paths.playlists,
             networkInfo: JSON.stringify(networkInfo || {}),
             year: new Date().getFullYear()
         };

@@ -66,7 +66,6 @@ const appConfig = {
     paths: {
         uploads: './public/uploads',
         public: './public',
-        videos: './public/videos',
         playlists: './public/videos',
         screenshots: './public/screenshots',
         snapshots: './public/snapshots',

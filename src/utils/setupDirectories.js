@@ -5,7 +5,6 @@ import { appConfig } from '../config/appConfig.mjs';
 async function setupDirectories() {
     const directories = [
         appConfig.paths.uploads,
-        appConfig.paths.videos,
         appConfig.paths.playlists,
         appConfig.paths.screenshots,
         appConfig.paths.snapshots,

@@ -319,18 +319,18 @@ router.get('/snapshot', async (req, res) => {
  */
 async function getPlaylists() {
     try {
-        const videosDir = appConfig.paths.videos;
+        const playlistDir = appConfig.paths.playlists;
 
         // Verificar si el directorio existe
-        if (!fs.existsSync(videosDir)) {
+        if (!fs.existsSync(playlistDir)) {
             return [];
         }
 
-        const dirs = await fsPromises.readdir(videosDir);
+        const dirs = await fsPromises.readdir(playlistDir);
         const playlists = [];
 
         for (const dir of dirs) {
-            const dirPath = path.join(videosDir, dir);
+            const dirPath = path.join(playlistDir, dir);
             const stats = await fsPromises.stat(dirPath);
 
             if (stats.isDirectory()) {
@@ -367,7 +367,7 @@ async function getPlaylists() {
  */
 export async function getPlaylistDetails(name) {
     try {
-        const playlistDir = path.join(appConfig.paths.videos, name);
+        const playlistDir = path.join(appConfig.paths.playlists, name);
 
         // Verificar si el directorio existe
         if (!fs.existsSync(playlistDir)) {
@@ -434,7 +434,7 @@ export async function getPlaylistDetails(name) {
  */
 async function deletePlaylist(name) {
     try {
-        const playlistDir = path.join(appConfig.paths.videos, name);
+        const playlistDir = path.join(appConfig.paths.playlists, name);
 
         // Verificar si el directorio existe
         if (!fs.existsSync(playlistDir)) {
@@ -457,18 +457,18 @@ async function deletePlaylist(name) {
  */
 async function deleteAllPlaylists() {
     try {
-        const videosDir = appConfig.paths.videos;
+        const playlistDir = appConfig.paths.playlists;
 
         // Verificar si el directorio existe
-        if (!fs.existsSync(videosDir)) {
+        if (!fs.existsSync(playlistDir)) {
             return 0;
         }
 
-        const dirs = await fsPromises.readdir(videosDir);
+        const dirs = await fsPromises.readdir(playlistDir);
         let count = 0;
 
         for (const dir of dirs) {
-            const dirPath = path.join(videosDir, dir);
+            const dirPath = path.join(playlistDir, dir);
             const stats = await fsPromises.stat(dirPath);
 
             if (stats.isDirectory()) {

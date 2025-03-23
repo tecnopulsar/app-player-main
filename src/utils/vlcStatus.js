@@ -63,8 +63,8 @@ export async function getVLCStatus() {
  */
 export async function getPlaylistInfo() {
     try {
-        // Obtener la ruta de la playlist actual
-        const playlistPath = path.join(appConfig.paths.videosDefecto, 'playlistDefecto', 'playlistDefecto.m3u');
+        // Obtener la ruta de la playlist actual CORREGIR
+        const playlistPath = path.join(appConfig.paths.playlists, 'playlistDefecto', 'playlistDefecto.m3u');
 
         // Verificar que el archivo existe
         await fs.access(playlistPath);

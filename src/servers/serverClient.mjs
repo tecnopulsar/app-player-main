@@ -2,11 +2,21 @@
 import express from 'express';
 import { createServer } from 'node:http';
 import cors from 'cors';
-import router from '../routes/index.mjs';
-import { getDetailedNetworkInfo } from '../utils/networkUtils.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { appConfig } from '../config/appConfig.mjs';
+
+// Importar todos los endpoints directamente
+import systemEndpoints from '../routes/systemEndpoints.mjs';
+import playlistUploadHandler from '../routes/playlistUploadHandler.mjs';
+import vlcEndpoints from '../routes/vlcEndpoints.mjs';
+import appEndpoints from '../routes/appEndpoints.mjs';
+import fileHandler from '../routes/fileHandler.mjs';
+import defaultEndpoints from '../routes/endpoints.mjs';
+import activePlaylistEndpoints from '../routes/activePlaylistEndpoints.mjs';
+import playlistRoutes from '../routes/playlistRoutes.mjs';
+
+import { getDetailedNetworkInfo } from '../utils/networkUtils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -15,13 +25,12 @@ const __dirname = dirname(__filename);
 const port = process.env.PORT ? parseInt(process.env.PORT) : (appConfig.server.port || 3000);
 
 // Variables globales para el servidor
+export let app;
+export let server;
 export let networkInfo;
-export let device;
-let server;
 
-function createApp() {
-  const app = express();
-
+function createExpressApp() {
+  app = express();
   // Configuración de middleware
   app.use(cors());
   app.use(express.json());
@@ -29,6 +38,17 @@ function createApp() {
 
   // Servir archivos estáticos desde la nueva ubicación
   app.use(express.static(join(__dirname, '../../public')));
+
+  // Configurar todas las rutas directamente
+  app.use('/api', defaultEndpoints);
+  app.use('/api/system', systemEndpoints);
+  app.use('/api/playlist', playlistUploadHandler);
+  app.use('/api/vlc', vlcEndpoints);
+  app.use('/api/app', appEndpoints);
+  app.use('/api/files', fileHandler);
+  app.use('/api/active-playlist', activePlaylistEndpoints);
+  app.use('/api/snapshot', vlcEndpoints);
+  app.use('/api/playlist-routes', playlistRoutes);
 
   return app;
 }
@@ -40,16 +60,6 @@ async function getAllNetworkInfo() {
     if (!networkInfo) {
       throw new Error('No se pudo obtener la información de red');
     }
-
-    // Configurar el dispositivo
-    device = {
-      id: '',
-      name: 'Monitor 1',
-      urlServer: 'http://192.168.1.3:3001',
-      networkInfo,
-      heartbeatInterval: 25000,
-    };
-
     return networkInfo;
   } catch (error) {
     console.error('Error al obtener información de red:', error);
@@ -57,38 +67,26 @@ async function getAllNetworkInfo() {
   }
 }
 
-export async function initializeServer(customPort = port, app = null) {
+export async function initializeServer(customPort = port) {
   try {
     // Obtener información de red antes de iniciar el servidor
     await getAllNetworkInfo();
 
-    if (server) {
-      console.log('El servidor ya está en ejecución');
-      return server;
-    }
-
-    // Si no se proporciona una app, crear una nueva
-    if (!app) {
-      app = createApp();
-
-      // Configurar rutas solo si estamos creando una nueva app
-      app.use('/api', router);
-    }
+    app = createExpressApp();
 
     // Crear servidor HTTP
     server = createServer(app);
 
     return new Promise((resolve, reject) => {
       server.listen(customPort, '0.0.0.0', () => {
+        // Asegúrate de que networkInfo esté definido antes de usarlo
+        const ipAddress = networkInfo?.eth0?.ip || networkInfo?.wlan0?.ip || 'IP_LOCAL';
         console.log('╔═══════════════════════════════════════════════╗');
         console.log('║           SERVIDOR EXPRESS INICIADO           ║');
         console.log('╠═══════════════════════════════════════════════╣');
-        console.log(`║ Puerto: ${customPort}`);
-        console.log(`║ Local: http://localhost:${customPort}`);
-
-        // Asegúrate de que networkInfo esté definido antes de usarlo
-        const ipAddress = networkInfo?.eth0?.ip || networkInfo?.wlan0?.ip || 'IP_LOCAL';
-        console.log(`║ Red local: http://${ipAddress}:${customPort}`);
+        console.log(`║ Puerto: ${customPort}                         ║`);
+        console.log(`║ Local: http://localhost:${customPort}         ║`);
+        console.log(`║ Red local: http://${ipAddress}:${customPort}  ║`);
         console.log('╚═══════════════════════════════════════════════╝');
         resolve(server);
       });

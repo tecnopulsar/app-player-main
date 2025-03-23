@@ -2,6 +2,26 @@ import { Router } from 'express';
 import { getActivePlaylist, updateActivePlaylist } from '../utils/activePlaylist.mjs';
 import { getPlaylistDetails } from './vlcEndpoints.mjs';
 import { VLCPlayer } from '../lib/vlcPlayer.js';
+import fs from 'fs';
+import fsPromises from 'fs/promises';
+import { getSystemState } from '../utils/systemState.mjs';
+import path from 'path';
+import { getConfig } from '../config/appConfig.mjs';
+
+// Función para obtener la ruta de una playlist por nombre
+async function getPlaylistPath(playlistName) {
+    if (!playlistName) return null;
+
+    const config = getConfig();
+    const playlistsDir = config.paths.playlists;
+    const playlistPath = path.join(playlistsDir, playlistName, `${playlistName}.m3u`);
+
+    if (fs.existsSync(playlistPath)) {
+        return playlistPath;
+    }
+
+    return null;
+}
 
 // Acceso seguro a global
 let global;
@@ -53,7 +73,9 @@ router.get('/', async (req, res) => {
  *         description: Nombre de la playlist a establecer como activa
  */
 router.post('/', async (req, res) => {
+    console.log('📝 POST /api/active-playlist - Estableciendo playlist activa:', req.body);
     try {
+        // Validación básica
         const { playlistName } = req.body;
 
         if (!playlistName) {
@@ -63,118 +85,127 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Obtener los detalles de la playlist solicitada
-        const playlist = await getPlaylistDetails(playlistName);
+        // Obtener los datos de la playlist desde el sistema de archivos
+        const playlistPath = await getPlaylistPath(playlistName);
 
-        if (!playlist) {
+        if (!playlistPath || !fs.existsSync(playlistPath)) {
             return res.status(404).json({
                 success: false,
-                message: `Playlist '${playlistName}' no encontrada`
+                message: `Playlist '${playlistName}' no encontrada en el sistema`
             });
         }
 
-        // Actualizar la playlist activa
-        const updatedPlaylist = await updateActivePlaylist({
-            playlistName: playlistName,
-            playlistPath: playlist.path
+        // Contar archivos en la playlist
+        let fileCount = 0;
+        try {
+            const playlistContent = await fsPromises.readFile(playlistPath, 'utf8');
+            // Contar líneas que no sean comentarios o vacías
+            fileCount = playlistContent.split('\n')
+                .filter(line => line.trim() && !line.startsWith('#'))
+                .length;
+        } catch (err) {
+            console.error(`Error al leer el contenido de la playlist: ${err.message}`);
+        }
+
+        // Obtener datos actuales de la playlist activa si existe
+        let currentActivePlaylist = {
+            playlistName: null,
+            playlistPath: null,
+            currentIndex: 0,
+            fileCount: 0,
+            isDefault: false,
+            lastLoaded: null
+        };
+
+        try {
+            // Primero verificamos si hay una playlist activa en el estado
+            const systemState = await getSystemState();
+            if (systemState && systemState.activePlaylist) {
+                currentActivePlaylist = systemState.activePlaylist;
+            }
+        } catch (err) {
+            console.error(`Error al obtener la playlist activa actual: ${err.message}`);
+        }
+
+        // Actualizar la playlist activa con todos los datos necesarios
+        await updateActivePlaylist({
+            playlistName,
+            playlistPath,
+            // Mantener el índice actual si estamos actualizando la misma playlist
+            currentIndex: playlistName === currentActivePlaylist.playlistName ?
+                currentActivePlaylist.currentIndex : 0,
+            fileCount,
+            // Por defecto no es la playlist por defecto a menos que se indique lo contrario
+            isDefault: req.body.isDefault !== undefined ?
+                req.body.isDefault : currentActivePlaylist.isDefault,
+            // Actualizar timestamp
+            lastLoaded: new Date().toISOString()
         });
 
-        // Verificar si necesitamos iniciar o reiniciar VLC
+        // Verificar que la información se guardó correctamente en systemState
         try {
-            // Comprobar si VLC ya está iniciado
-            let needRestartVLC = false;
+            const { getSystemState } = await import('../utils/systemState.mjs');
+            const systemState = await getSystemState();
 
-            // Verificar si hay una instancia global de VLC 
-            if (!global.vlcPlayer) {
-                console.log('ℹ️ No hay instancia de VLC. Iniciando una nueva...');
+            if (systemState && systemState.activePlaylist) {
+                // Verificar que playlistPath se guardó correctamente
+                if (!systemState.activePlaylist.playlistPath && playlistPath) {
+                    console.warn(`⚠️ playlistPath no se guardó correctamente en systemState. Forzando actualización...`);
 
-                // Crear una nueva instancia de VLC si no existe
-                if (!vlcInstance) {
-                    vlcInstance = VLCPlayer.getInstance();
-                }
+                    // Forzar actualización explícita del estado
+                    const { saveSystemState } = await import('../utils/systemState.mjs');
+                    systemState.activePlaylist.playlistPath = playlistPath;
+                    await saveSystemState(systemState);
 
-                // Iniciar VLC con la playlist actualizada
-                const startSuccess = await vlcInstance.start();
-
-                if (startSuccess) {
-                    console.log(`✅ VLC iniciado correctamente con la playlist: ${playlistName}`);
-
-                    // Asignar la instancia a la variable global para que otros componentes puedan acceder
-                    global.vlcPlayer = vlcInstance;
-
-                    // Notificar al proceso principal que VLC ha sido iniciado
-                    if (global.mainWindow && !global.mainWindow.isDestroyed()) {
-                        global.mainWindow.webContents.send('vlc-started', {
-                            success: true,
-                            message: `VLC iniciado con la playlist: ${playlistName}`,
-                            playlist: updatedPlaylist
-                        });
-                    }
-                } else {
-                    console.error('❌ Error al iniciar VLC');
-                    return res.status(500).json({
-                        success: false,
-                        message: 'Error al iniciar VLC con la playlist actualizada',
-                        activePlaylist: updatedPlaylist
-                    });
-                }
-            } else {
-                console.log('ℹ️ VLC ya está iniciado. Actualizando playlist...');
-
-                // Si VLC ya está iniciado, simplemente cargar la nueva playlist
-                if (global.vlcPlayer.loadPlaylist) {
-                    await global.vlcPlayer.loadPlaylist(playlist.path);
-                    console.log(`✅ Playlist actualizada en VLC: ${playlistName}`);
-                } else {
-                    // Si no tiene el método loadPlaylist, reiniciar VLC
-                    if (vlcInstance) {
-                        await vlcInstance.stop();
-                    }
-
-                    vlcInstance = VLCPlayer.getInstance();
-                    const startSuccess = await vlcInstance.start();
-
-                    if (startSuccess) {
-                        console.log(`✅ VLC reiniciado con la nueva playlist: ${playlistName}`);
-                        global.vlcPlayer = vlcInstance;
-                    } else {
-                        console.error('❌ Error al reiniciar VLC');
-                    }
-                }
-
-                // Notificar al proceso principal sobre la actualización
-                if (global.mainWindow && !global.mainWindow.isDestroyed()) {
-                    global.mainWindow.webContents.send('playlist-updated', {
-                        success: true,
-                        message: `Playlist actualizada: ${playlistName}`,
-                        playlist: updatedPlaylist
-                    });
+                    console.log(`✅ Actualización forzada de playlistPath: ${playlistPath}`);
                 }
             }
-
-            return res.json({
-                success: true,
-                message: `Playlist '${playlistName}' establecida como activa y cargada en VLC`,
-                activePlaylist: updatedPlaylist
-            });
-
-        } catch (vlcError) {
-            console.error('Error al gestionar VLC:', vlcError);
-
-            // Aunque hubo error con VLC, la playlist fue actualizada
-            return res.json({
-                success: true,
-                warning: `La playlist fue establecida pero hubo un error al iniciar/actualizar VLC: ${vlcError.message}`,
-                message: `Playlist '${playlistName}' establecida como activa`,
-                activePlaylist: updatedPlaylist
-            });
+        } catch (err) {
+            console.error(`❌ Error al verificar systemState después de actualizar: ${err.message}`);
         }
+
+        // Intentar cargar la playlist en VLC
+        let vlcRestarted = false;
+        let vlcPlaylistLoaded = false;
+
+        try {
+            const vlc = VLCPlayer.getInstance();
+            // Primer intento - carga normal
+            vlcPlaylistLoaded = await vlc.loadPlaylist(playlistPath, false);
+
+            // Si falló, intentar con reinicio forzado
+            if (!vlcPlaylistLoaded) {
+                console.log('🔄 El primer intento de carga falló, intentando con reinicio forzado...');
+                vlcRestarted = true;
+                vlcPlaylistLoaded = await vlc.loadPlaylist(playlistPath, true);
+            }
+
+            if (vlcPlaylistLoaded) {
+                console.log(`✅ Playlist '${playlistName}' cargada exitosamente en VLC`);
+            } else {
+                console.error(`❌ No se pudo cargar la playlist '${playlistName}' en VLC después de múltiples intentos`);
+            }
+        } catch (error) {
+            console.error(`🛑 Error al cargar la playlist en VLC: ${error.message}`);
+        }
+
+        // Obtener los datos actualizados para la respuesta
+        const updatedActivePlaylist = await getActivePlaylist();
+
+        res.json({
+            success: true,
+            message: `Playlist '${playlistName}' establecida como activa${vlcPlaylistLoaded ? ' y cargada en VLC' : ''}${vlcRestarted ? ' (con reinicio)' : ''}`,
+            activePlaylist: updatedActivePlaylist,
+            vlcStatus: {
+                loaded: vlcPlaylistLoaded,
+                restarted: vlcRestarted
+            }
+        });
     } catch (error) {
-        console.error('Error al actualizar la playlist activa:', error);
-        return res.status(500).json({
+        console.error('❌ Error al establecer playlist activa:', error);
+        res.status(500).json({
             success: false,
-            message: 'Error al actualizar la playlist activa',
-            error: error.message
+            message: `Error al establecer playlist activa: ${error.message}`
         });
     }
 });

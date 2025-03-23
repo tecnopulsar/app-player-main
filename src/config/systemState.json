@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-03-22T11:14:17.921Z",
+  "timestamp": "2025-03-22T12:43:29.605Z",
   "system": {
     "hostname": "base",
     "platform": "linux",
@@ -7,12 +7,12 @@
     "release": "6.12.18-v8+",
     "cpus": 4,
     "totalMem": 3923357696,
-    "freeMem": 1868922880,
-    "uptime": 134859.25,
+    "freeMem": 1887440896,
+    "uptime": 140210.96,
     "loadavg": [
-      1.77,
-      2.1,
-      2.84
+      1.48,
+      2.17,
+      2.74
     ],
     "network": {
       "lo": {
@@ -34,10 +34,10 @@
         "internal": false
       }
     },
-    "timestamp": "2025-03-22T11:14:17.849Z"
+    "timestamp": "2025-03-22T12:43:29.557Z"
   },
   "storage": {
-    "videosDirectory": "./public/videos",
+    "playlistDirectory": "./public/playlists",
     "videosStats": {
       "exists": true,
       "isDirectory": true,
@@ -45,19 +45,19 @@
       "fileCount": 0
     },
     "totalSpace": 61641601024,
-    "freeSpace": 42165923840,
-    "usedSpace": 19475677184,
-    "timestamp": "2025-03-22T11:14:17.893Z"
+    "freeSpace": 42165284864,
+    "usedSpace": 19476316160,
+    "timestamp": "2025-03-22T12:43:29.578Z"
   },
   "vlc": {
     "connected": true,
-    "playing": true,
+    "playing": false,
     "paused": false,
-    "stopped": false,
-    "currentItem": "ForBiggerJoyrides.mp4",
-    "position": 0.20942206680775,
-    "time": 3,
-    "length": 15,
+    "stopped": true,
+    "currentItem": null,
+    "position": 0,
+    "time": 0,
+    "length": 0,
     "volume": 0,
     "random": false,
     "repeat": false,
@@ -77,13 +77,15 @@
       "port": 8080
     },
     "version": "1.0.0",
-    "startTime": "2025-03-22T11:14:17.921Z",
+    "startTime": "2025-03-22T12:43:29.605Z",
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
     "playlistName": "VideosCortos",
-    "playlistPath": null,
-    "fileCount": 3,
-    "currentIndex": 0
+    "playlistPath": "public/videos/VideosCortos/VideosCortos.m3u",
+    "lastLoaded": "2025-03-22T12:43:27.371Z",
+    "isActive": true,
+    "currentIndex": 1,
+    "fileCount": 3
   }
 }

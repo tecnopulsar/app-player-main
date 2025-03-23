@@ -7,7 +7,7 @@ const VLC_PASSWORD = 'tecno';
 
 // Configuración global de axios para VLC
 const vlcAxios = axios.create({
-    baseURL: `http://${VLC_HOST}:${VLC_PORT}/requests/status.xml`,
+    baseURL: `http://${VLC_HOST}:${VLC_PORT}/requests/status.json`,
     auth: {
         username: VLC_USERNAME,
         password: VLC_PASSWORD

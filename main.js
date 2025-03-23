@@ -20,8 +20,6 @@ import { setControllerClient } from './src/routes/vlcEndpoints.mjs';
 import { getActivePlaylist, createEmptyActivePlaylist, activePlaylistExists, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
 import playlistService from './src/services/playlistService.mjs';
 import playlistRoutes from './src/routes/playlistRoutes.mjs';
-import { createExpressApp, addConfigRoutes } from './src/utils/expressUtils.mjs';
-import { initializePlaylistSystem } from './src/services/playlistSystemService.mjs';
 import { startSystemStateMonitor } from './src/utils/systemState.mjs';
 
 // Deshabilitar la aceleración por hardware
@@ -80,7 +78,6 @@ async function createWindow() {
 
     // Configurar el cliente controlador para los endpoints de VLC
     setControllerClient(controllerClient);
-
     console.log('=====================================\n');
 
     mainWindow = new BrowserWindow({
@@ -97,9 +94,6 @@ async function createWindow() {
 
     // Inicializar el sistema de logs
     initLogs(mainWindow);
-
-    // Inicializar el servicio de playlist
-    await playlistService.initialize();
 
     // Iniciar el monitor de estado del sistema con un retraso para dar tiempo a que VLC esté preparado
     setTimeout(() => {
@@ -123,58 +117,9 @@ async function createWindow() {
       sendLog('VLC no iniciado - No hay playlist configurada', 'warning');
     }
 
-    // Crear y configurar la aplicación Express
-    const app = createExpressApp();
-
-    // Añadir rutas de configuración
-    addConfigRoutes(app);
-
-    // Configurar rutas de playlist
-    app.use('/api/playlist', playlistRoutes);
-
-    // Ruta principal para el dashboard
-    app.get('/', async (req, res) => {
-      try {
-        // Obtener el estado de VLC y la información de la playlist
-        // Si VLC no está iniciado, proporcionar un estado predeterminado
-        const vlcStatus = vlcPlayer ? await getVLCStatus() : {
-          status: 'stopped',
-          message: 'No hay playlist configurada',
-          playing: false,
-          position: 0,
-          length: 0
-        };
-
-        const playlistInfo = activePlaylist || {
-          playlistName: null,
-          playlistPath: null,
-          lastLoaded: null,
-          message: 'No hay playlist configurada'
-        };
-
-        const templatePath = path.join(__dirname, 'index.html');
-        const data = {
-          port: port,
-          directorioVideos: path.join(__dirname, 'videos'),
-          networkInfo: JSON.stringify(getBasicNetworkInfo()),
-          vlcStatus: JSON.stringify(vlcStatus),
-          playlistInfo: JSON.stringify(playlistInfo),
-          year: new Date().getFullYear()
-        };
-
-        const html = await renderTemplate(templatePath, data);
-        res.send(html);
-      } catch (error) {
-        console.error('Error al renderizar el dashboard:', error);
-        res.status(500).send('Error al cargar el dashboard');
-      }
-    });
-
-    // Configuración de rutas API
-    app.use('/api', router);
-
+    // ✅
     // Iniciar el servidor con la app configurada
-    await initializeServer(port, app);
+    await initializeServer();
 
     // Cargar el archivo index.html
     await mainWindow.loadURL(`http://localhost:${port}`);
@@ -228,36 +173,6 @@ async function createWindow() {
         clearInterval(updateVLCStatusInterval);
       }
     }, 5000); // Actualizar cada 5 segundos
-
-    // Verificar la playlist activa y cargarla si es necesario
-    if (playlistIsValid) {
-      try {
-        // Mostrar información sobre el estado actual
-        console.log(`ℹ️ Estado actual: Playlist configurada '${activePlaylist.playlistName}'`);
-
-        // Intentar cargar la playlist solo si hay una configurada y VLC no está iniciado
-        if (!vlcPlayer) {
-          playlistService.loadActivePlaylist()
-            .then(result => {
-              if (result && result.playlistName) {
-                console.log(`✅ Playlist '${result.playlistName}' cargada correctamente`);
-              } else if (result && result.errorMessage) {
-                console.log(`⚠️ No se pudo cargar la playlist: ${result.errorMessage}`);
-              } else {
-                console.log('⚠️ No se cargó ninguna playlist');
-              }
-            })
-            .catch(error => {
-              console.error('❌ Error al cargar la playlist:', error);
-            });
-        }
-      } catch (error) {
-        console.error('❌ Error al verificar la playlist activa:', error);
-      }
-    } else {
-      console.log('ℹ️ Estado actual: No hay playlist configurada');
-    }
-
   } catch (error) {
     console.error('Error en la inicialización:', error);
     if (mainWindow) {

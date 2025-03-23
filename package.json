@@ -13,7 +13,7 @@
     "start:dev": "electron main.js",
     "server": "node src/servers/serverClient.mjs",
     "dev:nodemon": "nodemon src/servers/serverClient.mjs",
-    "standalone-server": "node -e \"import('./src/servers/expressServer.mjs').then(({startStandaloneServer}) => startStandaloneServer())\""
+    "start-display": "export DISPLAY=:0 && npm start"
   },
   "keywords": [],
   "author": "",

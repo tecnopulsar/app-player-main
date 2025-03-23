@@ -1,162 +1,150 @@
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
+import { getConfig } from '../config/appConfig.mjs';
+const { saveSystemState, getSystemState } = await import('./systemState.mjs');
 
-/**
- * Verificación explícita del archivo activePlaylist.json
- * @returns {Promise<boolean>} true si el archivo está verificado correctamente
- */
-async function verifyActivePlaylistFile() {
-    try {
-        // Verificar si el archivo existe, crearlo si no
-        const exists = await activePlaylistExists();
+// Ruta del archivo de playlist activa
+const STATE_FILE_PATH = path.join(process.cwd(), 'src/config/systemState.json');
 
-        if (!exists) {
-            console.log('⚠️ No se encontró archivo de playlist activa, creando uno nuevo...');
-            await createEmptyActivePlaylist();
-            console.log('ℹ️ No hay playlist configurada. No se iniciará VLC.');
-            return false;
-        } else {
-            console.log('✅ Archivo de playlist activa verificado correctamente');
-            return true;
-        }
-    } catch (error) {
-        console.error('❌ Error al verificar/crear archivo de playlist activa:', error);
-        return false;
-    }
-}
-
-/**
- * Obtiene la información de la playlist activa
- * @returns {Promise<Object|null>} Información de la playlist activa o null si hay error
- */
-async function getActivePlaylist() {
-    try {
-        const configDir = path.join(process.cwd(), 'src/config');
-        const activePlaylistFile = path.join(configDir, 'activePlaylist.json');
-
-        // Asegurar que el directorio existe
-        if (!fs.existsSync(configDir)) {
-            console.log(`⚠️ Creando directorio de configuración: ${configDir}`);
-            await fsPromises.mkdir(configDir, { recursive: true });
-        }
-
-        // Verificar si el archivo existe
-        if (!fs.existsSync(activePlaylistFile)) {
-            console.log('⚠️ No se encontró el archivo de playlist activa, creando uno nuevo...');
-            await createEmptyActivePlaylist();
-            // Leer el archivo recién creado
-            const data = await fsPromises.readFile(activePlaylistFile, 'utf8');
-            return JSON.parse(data);
-        }
-
-        // Leer el archivo
-        const data = await fsPromises.readFile(activePlaylistFile, 'utf8');
-        const activePlaylist = JSON.parse(data);
-
-        // Verificar si hay datos válidos
-        if (!activePlaylist || activePlaylist.playlistName === null) {
-            console.log('ℹ️ No hay playlist configurada actualmente');
-            return activePlaylist;
-        }
-
-        // Si la ruta de la playlist es nula, no intentar construir una ruta
-        if (!activePlaylist.playlistPath) {
-            return activePlaylist;
-        }
-
-        return activePlaylist;
-    } catch (error) {
-        console.error('❌ Error al obtener la playlist activa:', error);
-        // Crear un archivo con datos nulos si hay un error
-        await createEmptyActivePlaylist();
-        return null;
-    }
-}
-
-/**
- * Actualiza la información de la playlist activa
- * @param {Object} playlistInfo Información de la nueva playlist activa
+/** ✅
+ * Inicializa las propiedades de activePlaylist dentro de systemState.json
+ * sin eliminar otras configuraciones.
  * @returns {Promise<boolean>} true si se actualizó correctamente
  */
-async function updateActivePlaylist(playlistInfo) {
+async function initializeActivePlaylist() {
     try {
-        const configDir = path.join(process.cwd(), 'src/config');
-        const activePlaylistFile = path.join(configDir, 'activePlaylist.json');
-
-        // Asegurar que el directorio existe
-        if (!fs.existsSync(configDir)) {
-            await fsPromises.mkdir(configDir, { recursive: true });
-            console.log(`✅ Directorio creado: ${configDir}`);
+        if (!fs.existsSync(STATE_FILE_PATH)) {
+            console.error('❌ El archivo systemState.json no existe. No se puede inicializar la playlist.');
+            return false;
         }
 
-        const currentDate = new Date().toISOString();
-        const updatedInfo = {
-            ...playlistInfo,
-            lastLoaded: currentDate,
-            isActive: true,
-            isDefault: playlistInfo.isDefault || false
-        };
+        // Leer el archivo actual
+        const fileContent = await fsPromises.readFile(STATE_FILE_PATH, 'utf-8');
+        const jsonData = JSON.parse(fileContent);
 
-        await fsPromises.writeFile(activePlaylistFile, JSON.stringify(updatedInfo, null, 2));
-        console.log(`✅ Archivo de playlist activa actualizado: ${activePlaylistFile}`);
-        return true;
-    } catch (error) {
-        console.error('❌ Error al actualizar la playlist activa:', error);
-        return false;
-    }
-}
-
-/**
- * Verifica si la playlist activa existe
- * @returns {Promise<boolean>} true si existe un archivo de playlist activa
- */
-async function activePlaylistExists() {
-    try {
-        const activePlaylistFile = path.join(process.cwd(), 'src/config/activePlaylist.json');
-        return fs.existsSync(activePlaylistFile);
-    } catch (error) {
-        console.error('❌ Error al verificar si existe la playlist activa:', error);
-        return false;
-    }
-}
-
-/**
- * Crea un archivo de playlist activa con datos nulos
- * @returns {Promise<boolean>} true si se creó correctamente
- */
-async function createEmptyActivePlaylist() {
-    try {
-        const configDir = path.join(process.cwd(), 'src/config');
-        const activePlaylistFile = path.join(configDir, 'activePlaylist.json');
-
-        // Asegurar que el directorio existe
-        if (!fs.existsSync(configDir)) {
-            await fsPromises.mkdir(configDir, { recursive: true });
-            console.log(`✅ Directorio creado: ${configDir}`);
+        // Verificar si la sección activePlaylist existe
+        if (!jsonData.activePlaylist) {
+            console.warn('⚠️ No existe la propiedad activePlaylist en systemState.json. Se agregará.');
         }
 
-        const emptyPlaylist = {
+        // Inicializar las propiedades de activePlaylist sin modificar el resto del JSON
+        jsonData.activePlaylist = {
             playlistName: null,
             playlistPath: null,
             lastLoaded: null,
             isActive: false,
-            isDefault: false
+            currentIndex: null,
+            fileCount: null
         };
 
-        await fsPromises.writeFile(activePlaylistFile, JSON.stringify(emptyPlaylist, null, 2));
-        console.log(`✅ Archivo de playlist activa creado con datos nulos: ${activePlaylistFile}`);
+        // Escribir el archivo actualizado
+        await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(jsonData, null, 2));
+        console.log(`✅ Se inicializó la sección activePlaylist en systemState.json`);
         return true;
     } catch (error) {
-        console.error('❌ Error al crear archivo de playlist activa vacío:', error);
+        console.error('❌ Error al inicializar activePlaylist en systemState.json:', error);
         return false;
     }
 }
 
+/** ✅
+ * Verifica si el archivo systemState.json existe
+ * y si contiene una playlist activa con valores válidos.
+ * @returns {Promise<boolean>} true si el archivo y la playlist activa son válidos.
+ */
+async function activePlaylistIsValid() {
+    try {
+        if (!fs.existsSync(STATE_FILE_PATH)) {
+            console.error('❌ El archivo systemState.json no existe.');
+            return false;
+        }
+
+        const fileContent = fs.readFileSync(STATE_FILE_PATH, 'utf-8');
+        const jsonData = JSON.parse(fileContent);
+
+        if (
+            jsonData.activePlaylist &&
+            jsonData.activePlaylist.playlistName &&
+            jsonData.activePlaylist.playlistPath
+        ) {
+            return true;
+        } else {
+            console.error('❌ La playlist activa no es válida o faltan propiedades.');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Error al verificar la playlist activa:', error);
+        return false;
+    }
+}
+
+/** ✅ 
+ * Actualiza la información de la playlist activa
+ * @param {Object} data - Datos de la playlist activa
+ * @returns {Promise<Object>} La playlist actualizada
+ */
+async function updateActivePlaylist(data) {
+    try {
+        // 1. Leer el archivo systemState.json
+        const fileContent = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
+        const systemState = JSON.parse(fileContent);
+
+        // 2. Obtener la playlist actual (si existe)
+        const currentPlaylist = systemState.activePlaylist || {};
+
+        // 3. Crear el objeto de playlist actualizado
+        const updatedPlaylist = {
+            ...currentPlaylist, // Copiar las propiedades existentes de la playlist actual
+            ...data, // Sobrescribir con los nuevos datos proporcionados
+            lastLoaded: data.lastLoaded || new Date().toISOString(), // Usar la fecha proporcionada o la actual
+            isActive: true, // Forzar a que la playlist esté activa
+            currentIndex: data.currentIndex || 1, // Usar el índice proporcionado o 1 por defecto
+            fileCount: data.fileCount || 0 // Usar el conteo de archivos proporcionado o 0 por defecto
+        };
+
+        // 4. Actualizar solo la propiedad activePlaylist en el estado del sistema
+        systemState.activePlaylist = updatedPlaylist;
+
+        // 5. Guardar el archivo actualizado
+        await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(systemState, null, 2));
+        console.log(`✅ Playlist activa actualizada: ${updatedPlaylist.playlistName}`);
+    } catch (error) {
+        console.error('❌ Error al actualizar la playlist activa:', error);
+    }
+}
+
+/** ✅
+ * Obtiene la información de la playlist activa desde systemState.json.
+ * @returns {Promise<Object|null>} Retorna la playlist activa o null si no existe.
+ */
+async function getActivePlaylist() {
+    try {
+        if (!fs.existsSync(STATE_FILE_PATH)) {
+            console.error('❌ El archivo systemState.json no existe.');
+            return null;
+        }
+
+        // Leer el archivo y convertirlo en JSON
+        const fileContent = await fsPromises.readFile(STATE_FILE_PATH, 'utf-8');
+        const jsonData = JSON.parse(fileContent);
+
+        // Verificar si la propiedad activePlaylist está presente
+        if (!jsonData.activePlaylist) {
+            console.warn('⚠️ No se encontró la propiedad activePlaylist en systemState.json.');
+            return null;
+        }
+
+        return jsonData.activePlaylist;
+    } catch (error) {
+        console.error('❌ Error al obtener la playlist activa:', error);
+        return null;
+    }
+}
+
 export {
-    getActivePlaylist,
+    initializeActivePlaylist,
+    activePlaylistIsValid,
     updateActivePlaylist,
-    activePlaylistExists,
-    createEmptyActivePlaylist,
-    verifyActivePlaylistFile
+    getActivePlaylist,
 }; 
