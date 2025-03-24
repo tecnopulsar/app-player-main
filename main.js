@@ -1,25 +1,17 @@
 // main.js
 import { app, ipcMain, BrowserWindow } from 'electron';
-import { exec } from 'child_process';
 import { fileURLToPath } from 'url';
-import path, { dirname, join } from 'path';
+import path, { dirname } from 'path';
 import { WindowManager } from './src/windows/windowManager.js';
 import { VLCPlayer } from './src/lib/vlcPlayer.js';
 import { appConfig } from './src/config/appConfig.mjs';
 import { initializeServer, stopServer } from './src/servers/serverClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
-import express from 'express';
-import router from './src/routes/index.mjs';
-import cors from 'cors';
 import ControllerClient from './src/clients/controllerClient.mjs';
-import { getVLCStatus, getPlaylistInfo } from './src/utils/vlcStatus.js';
-import { getBasicNetworkInfo } from './src/utils/networkUtils.js';
-import { renderTemplate } from './src/utils/templateUtils.js';
+import { getVLCStatus } from './src/utils/vlcStatus.js';
 import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.js';
 import { setControllerClient } from './src/routes/vlcEndpoints.mjs';
-import { getActivePlaylist, createEmptyActivePlaylist, activePlaylistExists, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
-import playlistService from './src/services/playlistService.mjs';
-import playlistRoutes from './src/routes/playlistRoutes.mjs';
+import { getActivePlaylist, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
 import { startSystemStateMonitor } from './src/utils/systemState.mjs';
 
 // Deshabilitar la aceleración por hardware

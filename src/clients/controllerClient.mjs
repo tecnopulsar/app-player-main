@@ -1,12 +1,9 @@
 import { io } from 'socket.io-client';
 import { getVLCStatus, getPlaylistInfo } from '../utils/vlcStatus.js';
 import { getLocalIP, getMACAddress } from '../utils/networkUtils.js';
-import { vlcRequest } from '../services/vlcService.mjs';
 import axios from 'axios';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
-import path from 'path';
-import { appConfig } from '../config/appConfig.mjs';
 
 class ControllerClient {
     constructor(serverUrl, monitorUrl = 'http://localhost:3002') {

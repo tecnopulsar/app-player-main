@@ -16,8 +16,6 @@ import defaultEndpoints from '../routes/endpoints.mjs';
 import activePlaylistEndpoints from '../routes/activePlaylistEndpoints.mjs';
 import playlistRoutes from '../routes/playlistRoutes.mjs';
 
-import { getDetailedNetworkInfo } from '../utils/networkUtils.js';
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -56,7 +54,7 @@ function createExpressApp() {
 async function getAllNetworkInfo() {
   try {
     // Obtener información de red
-    networkInfo = await getDetailedNetworkInfo();
+    networkInfo = await getNetworkInfo();
     if (!networkInfo) {
       throw new Error('No se pudo obtener la información de red');
     }

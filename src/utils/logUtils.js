@@ -1,4 +1,4 @@
-/**
+/** ✅
  * Utilidades para el manejo de logs en la aplicación
  */
 

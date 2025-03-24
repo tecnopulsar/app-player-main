@@ -1,19 +1,12 @@
-import os from 'os';
-import { promisify } from 'util';
-import { exec } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-import fs from 'fs/promises';
+// ✅
 
-const execAsync = promisify(exec);
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import os from 'os';
 
 /**
- * Obtiene información de red usando os.networkInterfaces()
- * @returns {Object} Información de interfaces de red
+ * Obtiene información detallada de la red usando solo Node.js (sin scripts externos).
+ * @returns {Object} Información de interfaces de red (IPv4).
  */
-export function getBasicNetworkInfo() {
+export function getNetworkInfo() {
     const interfaces = os.networkInterfaces();
     const networkInfo = {};
 
@@ -32,78 +25,33 @@ export function getBasicNetworkInfo() {
 }
 
 /**
- * Obtiene información detallada de red usando un script bash
- * @returns {Promise<Object>} Información detallada de interfaces de red
- */
-export async function getDetailedNetworkInfo() {
-    const scriptPath = join(__dirname, '../scripts/network_info.sh');
-
-    try {
-        await fs.access(scriptPath);
-        await fs.chmod(scriptPath, 0o755);
-
-        const { stdout, stderr } = await execAsync(scriptPath);
-
-        if (stderr) {
-            console.error('Error en la salida estándar:', stderr);
-            return null;
-        }
-
-        return parseNetworkInfo(stdout);
-    } catch (error) {
-        console.error('Error al obtener información de red:', error);
-        return getBasicNetworkInfo(); // Fallback a información básica
-    }
-}
-
-/**
- * Parsea la salida del script de red
- * @param {string} output Salida del script
- * @returns {Object} Información parseada
- */
-function parseNetworkInfo(output) {
-    const interfaces = {};
-    const lines = output.trim().split('\n');
-
-    for (const line of lines) {
-        const match = line.match(/^(\w+)=(\S+?)=(\d+\.\d+\.\d+\.\d+)/);
-        if (match) {
-            const [_, interfaceName, macAddress, ipAddress] = match;
-            interfaces[interfaceName] = { mac: macAddress, ip: ipAddress };
-        }
-    }
-
-    return interfaces;
-}
-
-/**
- * Obtiene la IP local principal
- * @returns {string} Dirección IP local
+ * Obtiene la IP local principal.
+ * @returns {string} Dirección IP local o '127.0.0.1' si no se encuentra.
  */
 export function getLocalIP() {
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
         for (const iface of interfaces[name]) {
-            if (iface.internal === false && iface.family === 'IPv4') {
+            if (!iface.internal && iface.family === 'IPv4') {
                 return iface.address;
             }
         }
     }
-    return '127.0.0.1';
+    return '127.0.0.1'; // Fallback
 }
 
 /**
- * Obtiene la dirección MAC principal
- * @returns {string} Dirección MAC
+ * Obtiene la dirección MAC principal.
+ * @returns {string} Dirección MAC o '00:00:00:00:00:00' si no se encuentra.
  */
 export function getMACAddress() {
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
         for (const iface of interfaces[name]) {
-            if (iface.internal === false && iface.family === 'IPv4') {
+            if (!iface.internal && iface.family === 'IPv4') {
                 return iface.mac;
             }
         }
     }
-    return '00:00:00:00:00:00';
-} 
+    return '00:00:00:00:00:00'; // Fallback
+}

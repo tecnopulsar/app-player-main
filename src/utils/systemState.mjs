@@ -1,10 +1,56 @@
+/**
+ * @file systemMonitor.js
+ * @description Módulo completo para monitorear y gestionar el estado de un sistema multimedia basado en VLC
+ * @module systemMonitor
+ * 
+ * @requires fs - Operaciones sincrónicas del sistema de archivos
+ * @requires fs/promises - Operaciones asíncronas del sistema de archivos
+ * @requires path - Manejo de rutas de archivos
+ * @requires os - Información del sistema operativo
+ * @requires axios - Cliente HTTP para comunicación con VLC
+ * @requires ./activePlaylist.mjs - Gestión de playlists activas
+ * @requires ../config/appConfig.mjs - Configuración de la aplicación
+ * 
+ * @version 2.1.0
+ * @license MIT
+ * @author [Equipo de Desarrollo]
+ * @created 2023-08-15
+ * @updated 2024-03-25
+ * 
+ * @todo MEJORAS PENDIENTES:
+ * [⚠️] 1. Configuración dinámica del intervalo de monitoreo
+ * [⚠️] 2. Implementar EventEmitter para notificaciones de cambios
+ * [⚠️] 3. Adoptar sistema de logging estructurado (Winston/Pino)
+ * [⚠️] 4. Añadir pruebas unitarias para funciones críticas
+ * [⚠️] 5. Implementar cache en memoria para acceso rápido al estado
+ * [⚠️] 6. Mejorar manejo de errores con códigos personalizados
+ * [⚠️] 7. Añadir sistema de reintentos para conexión con VLC
+ * [⚠️] 8. Implementar rotación automática del archivo de estado
+ * [⚠️] 9. Añadir validación de esquema para el estado guardado
+ * [⚠️] 10. Soporte para múltiples instancias de VLC
+ * 
+ * @example
+ * // Uso básico
+ * import { getSystemState, startSystemStateMonitor } from './systemMonitor.js';
+ * 
+ * // Obtener estado actual
+ * const state = await getSystemState();
+ * 
+ * // Iniciar monitoreo automático
+ * const monitor = startSystemStateMonitor(30000); // 30 segundos
+ * 
+ * // Detener monitoreo
+ * monitor.stop();
+ */
+
+// ======================= IMPORTS ======================= //
+
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
 import os from 'os';
 import axios from 'axios';
 import { getActivePlaylist } from './activePlaylist.mjs';
-import playlistManager from './playlistManager.mjs';
 import { getConfig } from '../config/appConfig.mjs';
 
 // Ruta del archivo de estado

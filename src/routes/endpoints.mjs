@@ -5,31 +5,13 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { networkInfo } from '../servers/serverClient.mjs';
 import { exec } from 'child_process';
-import fileHandler from './fileHandler.mjs'; // Importar el nuevo router
+import { renderTemplate } from '../utils/templateUtils.js';
 
 const router = express.Router();
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const viewsDir = path.join(__dirname, '..', '..', 'views');
-
-// Función para renderizar templates
-async function renderTemplate(templatePath, data) {
-    try {
-        const fs = await import('fs/promises');
-        let template = await fs.readFile(templatePath, 'utf8');
-
-        // Reemplazar variables en el template
-        Object.keys(data).forEach(key => {
-            const regex = new RegExp(`{{${key}}}`, 'g');
-            template = template.replace(regex, data[key]);
-        });
-
-        return template;
-    } catch (error) {
-        console.error('Error al renderizar el template:', error);
-        throw error;
-    }
-}
 
 // Middleware para logging
 router.use((req, res, next) => {

@@ -1,3 +1,25 @@
+/** ✅
+ * @file setupDirectories.js
+ * @description Configura y verifica la estructura de directorios requeridos por la aplicación
+ * @module utils/setupDirectories
+ * 
+ * @requires fs/promises - Para operaciones asíncronas del sistema de archivos
+ * @requires path - Para manejo de rutas de directorios
+ * @requires ../config/appConfig.mjs - Configuración de la aplicación con las rutas definidas
+ * 
+ * @function setupDirectories
+ * @async
+ * @description Crea los directorios especificados en la configuración de manera recursiva.
+ * Los directorios se definen en appConfig.paths y incluyen:
+ *   - uploads, playlists, screenshots, snapshots, images, temp
+ * 
+ * @throws {Error} Captura y registra errores individuales por directorio sin detener el proceso
+ * 
+ * @example
+ * await setupDirectories();
+ * 
+ */
+
 import fs from 'fs/promises';
 import path from 'path';
 import { appConfig } from '../config/appConfig.mjs';
