@@ -1,44 +1,25 @@
 import { io } from 'socket.io-client';
-import os from 'os';
+import { getLocalIP, getMACAddress } from '../utils/networkUtils.mjs';
+import { getConfig } from '../config/appConfig.mjs';
 
 class DeviceClient {
-    constructor(serverUrl) {
-        this.serverUrl = serverUrl;
+    constructor(serverUrl = null) {
+        const config = getConfig();
+        this.serverUrl = serverUrl || config.controller?.url || 'http://localhost:3001';
         this.socket = null;
         this.deviceInfo = {
             id: null,
-            name: null,
-            ip: this.getLocalIP(),
-            mac: this.getMACAddress(),
+            name: config.device?.name || null,
+            ip: getLocalIP(),
+            mac: getMACAddress(),
             status: 'active',
             lastSeen: new Date().toISOString()
         };
-        this.heartbeatInterval = 25000; // 25 segundos
+        this.heartbeatInterval = config.controller?.heartbeatInterval || 25000;
+        this.verboseLogs = config.controller?.verboseLogs || false;
         this.intervalId = null;
-    }
-
-    getLocalIP() {
-        const interfaces = os.networkInterfaces();
-        for (const name of Object.keys(interfaces)) {
-            for (const iface of interfaces[name]) {
-                if (iface.internal === false && iface.family === 'IPv4') {
-                    return iface.address;
-                }
-            }
-        }
-        return '127.0.0.1';
-    }
-
-    getMACAddress() {
-        const interfaces = os.networkInterfaces();
-        for (const name of Object.keys(interfaces)) {
-            for (const iface of interfaces[name]) {
-                if (iface.internal === false && iface.family === 'IPv4') {
-                    return iface.mac;
-                }
-            }
-        }
-        return '00:00:00:00:00:00';
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = config.controller?.maxReconnectAttempts || 5;
     }
 
     connect() {
@@ -48,7 +29,7 @@ class DeviceClient {
 
             this.socket = io(this.serverUrl, {
                 reconnection: true,
-                reconnectionAttempts: 5,
+                reconnectionAttempts: this.maxReconnectAttempts,
                 reconnectionDelay: 1000,
                 timeout: 20000
             });
@@ -107,19 +88,44 @@ class DeviceClient {
 
                 this.socket.emit('heartbeat', heartbeatData);
 
-                // Mejorar el logging del heartbeat
-                console.log('=== Heartbeat Enviado ===');
-                console.log(`ID: ${heartbeatData.id || 'No asignado'}`);
-                console.log(`IP: ${heartbeatData.ip}`);
-                console.log(`MAC: ${heartbeatData.mac}`);
-                console.log(`Estado: ${heartbeatData.status ? 'Activo' : 'Inactivo'}`);
-                console.log(`Última vez visto: ${heartbeatData.lastSeen}`);
-                console.log(`Socket conectado: ${this.socket.connected}`);
-                console.log('=======================');
+                // Logs condicionales según configuración
+                if (this.verboseLogs) {
+                    this.logHeartbeatDetails(heartbeatData);
+                } else {
+                    // Log mínimo
+                    console.log(`Heartbeat enviado [${heartbeatData.id || 'No ID'}]`);
+                }
             } else {
                 console.warn('No se pudo enviar heartbeat: Socket no conectado');
+                this.reconnectToServer();
             }
         }, this.heartbeatInterval);
+    }
+
+    logHeartbeatDetails(heartbeatData) {
+        console.log('=== Heartbeat Enviado ===');
+        console.log(`ID: ${heartbeatData.id || 'No asignado'}`);
+        console.log(`IP: ${heartbeatData.ip}`);
+        console.log(`MAC: ${heartbeatData.mac}`);
+        console.log(`Estado: ${heartbeatData.status ? 'Activo' : 'Inactivo'}`);
+        console.log(`Última vez visto: ${heartbeatData.lastSeen}`);
+        console.log(`Socket conectado: ${this.socket.connected}`);
+        console.log('=======================');
+    }
+
+    reconnectToServer() {
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.reconnectAttempts++;
+            console.log(`Intento de reconexión ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+
+            if (this.socket) {
+                this.socket.disconnect();
+            }
+
+            this.connect();
+        } else {
+            console.error('Máximo número de intentos de reconexión alcanzado');
+        }
     }
 
     stopHeartbeat() {

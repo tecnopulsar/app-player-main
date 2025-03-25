@@ -369,22 +369,20 @@ export class VLCPlayer {
                     const currentFile = currentStatus.information.category.meta.filename;
                     console.log(`ℹ️ Actualmente VLC está reproduciendo: ${currentFile}`);
 
-                    // Verificar si el archivo pertenece a alguna playlist
-                    const { determinarPlaylistDelArchivo } = await import('../utils/systemState.mjs');
-                    if (determinarPlaylistDelArchivo) {
-                        const currentPlaylistInfo = await determinarPlaylistDelArchivo(currentFile);
+                    // Usar la playlist activa actual
+                    const { getActivePlaylist } = await import('../utils/activePlaylist.mjs');
+                    const activePlaylist = await getActivePlaylist();
 
-                        if (currentPlaylistInfo) {
-                            console.log(`ℹ️ El archivo actual pertenece a la playlist: ${currentPlaylistInfo.playlistName}`);
+                    if (activePlaylist && activePlaylist.playlistName) {
+                        console.log(`ℹ️ El archivo actual está en la playlist: ${activePlaylist.playlistName}`);
 
-                            // Si ya está reproduciendo la playlist solicitada, verificamos
-                            if (currentPlaylistInfo.playlistName === playlistName ||
-                                currentPlaylistInfo.playlistPath === playlistPath) {
-                                console.log(`ℹ️ VLC ya está reproduciendo la playlist solicitada`);
+                        // Si ya está reproduciendo la playlist solicitada, verificamos
+                        if (activePlaylist.playlistName === playlistName ||
+                            activePlaylist.playlistPath === playlistPath) {
+                            console.log(`ℹ️ VLC ya está reproduciendo la playlist solicitada`);
 
-                                // Aún así, verificamos completamente
-                                return await this.verifyPlaylistLoaded(playlistPath);
-                            }
+                            // Aún así, verificamos completamente
+                            return await this.verifyPlaylistLoaded(playlistPath);
                         }
                     }
                 }
@@ -491,30 +489,21 @@ export class VLCPlayer {
                     console.log(`ℹ️ VLC está reproduciendo: ${currentFile}`);
 
                     // Verificar si el archivo pertenece a la playlist solicitada
-                    const { determinarPlaylistDelArchivo } = await import('../utils/systemState.mjs');
-                    if (determinarPlaylistDelArchivo) {
-                        const filePlaylistInfo = await determinarPlaylistDelArchivo(currentFile);
+                    const { getActivePlaylist } = await import('../utils/activePlaylist.mjs');
+                    const activePlaylist = await getActivePlaylist();
 
-                        if (filePlaylistInfo) {
-                            console.log(`ℹ️ El archivo actual pertenece a playlist: ${filePlaylistInfo.playlistName}`);
+                    if (activePlaylist && activePlaylist.playlistName) {
+                        console.log(`ℹ️ El archivo actual está en la playlist: ${activePlaylist.playlistName}`);
 
-                            // Verificar coincidencia con la playlist solicitada
-                            if (filePlaylistInfo.playlistName === playlistName ||
-                                filePlaylistInfo.playlistPath === playlistPath ||
-                                playlistFiles.includes(currentFile)) {
+                        // Verificar coincidencia con la playlist solicitada
+                        if (activePlaylist.playlistName === playlistName ||
+                            activePlaylist.playlistPath === playlistPath ||
+                            playlistFiles.includes(currentFile)) {
 
-                                console.log(`✅ Verificación exitosa (intento ${attempt}): VLC está reproduciendo archivo de la playlist solicitada`);
-                                return true;
-                            } else {
-                                console.warn(`⚠️ VLC está reproduciendo un archivo, pero de otra playlist (${filePlaylistInfo.playlistName})`);
-                            }
+                            console.log(`✅ Verificación exitosa (intento ${attempt}): VLC está reproduciendo archivo de la playlist solicitada`);
+                            return true;
                         } else {
-                            // Verificar directamente si el archivo está en la lista de archivos de la playlist
-                            if (playlistFiles.includes(currentFile)) {
-                                console.log(`✅ Verificación exitosa (intento ${attempt}): Archivo encontrado en la playlist solicitada`);
-                                return true;
-                            }
-                            console.warn(`⚠️ No se pudo determinar a qué playlist pertenece el archivo actual`);
+                            console.warn(`⚠️ VLC está reproduciendo un archivo, pero de otra playlist (${activePlaylist.playlistName})`);
                         }
                     }
 
@@ -599,12 +588,12 @@ export class VLCPlayer {
 
                     // Intentar determinar a qué playlist pertenece este archivo
                     try {
-                        const { determinarPlaylistDelArchivo } = await import('../utils/systemState.mjs');
-                        if (determinarPlaylistDelArchivo && this.currentFile) {
-                            const playlistInfo = await determinarPlaylistDelArchivo(this.currentFile);
-                            if (playlistInfo) {
-                                console.log(`ℹ️ Archivo actual pertenece a playlist: ${playlistInfo.playlistName}`);
-                                this.currentPlaylistInfo = playlistInfo;
+                        const { getActivePlaylist } = await import('../utils/activePlaylist.mjs');
+                        if (this.currentFile) {
+                            const activePlaylist = await getActivePlaylist();
+
+                            if (activePlaylist && activePlaylist.playlistName) {
+                                console.log(`ℹ️ El archivo actual está en la playlist: ${activePlaylist.playlistName}`);
 
                                 // Actualizar el estado del sistema para mantener consistencia
                                 try {
@@ -614,7 +603,7 @@ export class VLCPlayer {
                                     // Verificar si hay discrepancia entre la playlist activa y lo que realmente se reproduce
                                     if (systemState &&
                                         systemState.activePlaylist &&
-                                        (systemState.activePlaylist.playlistName !== playlistInfo.playlistName ||
+                                        (systemState.activePlaylist.playlistName !== activePlaylist.playlistName ||
                                             !systemState.activePlaylist.playlistPath)) {
 
                                         console.log(`⚠️ Detectada discrepancia en información de playlist activa. Actualizando...`);
@@ -622,10 +611,10 @@ export class VLCPlayer {
                                         // Actualizar la información de la playlist activa
                                         systemState.activePlaylist = {
                                             ...systemState.activePlaylist,
-                                            playlistName: playlistInfo.playlistName,
-                                            playlistPath: playlistInfo.playlistPath,
-                                            fileCount: playlistInfo.fileCount,
-                                            currentIndex: playlistInfo.currentIndex
+                                            playlistName: activePlaylist.playlistName,
+                                            playlistPath: activePlaylist.playlistPath,
+                                            fileCount: activePlaylist.fileCount,
+                                            currentIndex: activePlaylist.currentIndex
                                         };
 
                                         // Guardar el estado actualizado

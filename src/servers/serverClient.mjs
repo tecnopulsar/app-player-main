@@ -5,16 +5,10 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { appConfig } from '../config/appConfig.mjs';
+import { getNetworkInfo } from '../utils/networkUtils.mjs';
 
-// Importar todos los endpoints directamente
-import systemEndpoints from '../routes/systemEndpoints.mjs';
-import playlistUploadHandler from '../routes/playlistUploadHandler.mjs';
-import vlcEndpoints from '../routes/vlcEndpoints.mjs';
-import appEndpoints from '../routes/appEndpoints.mjs';
-import fileHandler from '../routes/fileHandler.mjs';
-import defaultEndpoints from '../routes/endpoints.mjs';
-import activePlaylistEndpoints from '../routes/activePlaylistEndpoints.mjs';
-import playlistRoutes from '../routes/playlistRoutes.mjs';
+// Importar el router centralizado
+import router from '../routes/index.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,19 +28,16 @@ function createExpressApp() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Servir archivos estáticos desde la nueva ubicación
+  // Servir archivos estáticos desde la ubicación public
   app.use(express.static(join(__dirname, '../../public')));
 
-  // Configurar todas las rutas directamente
-  app.use('/api', defaultEndpoints);
-  app.use('/api/system', systemEndpoints);
-  app.use('/api/playlist', playlistUploadHandler);
-  app.use('/api/vlc', vlcEndpoints);
-  app.use('/api/app', appEndpoints);
-  app.use('/api/files', fileHandler);
-  app.use('/api/active-playlist', activePlaylistEndpoints);
-  app.use('/api/snapshot', vlcEndpoints);
-  app.use('/api/playlist-routes', playlistRoutes);
+  // Configurar ruta principal para servir index.html
+  app.get('/', (req, res) => {
+    res.sendFile(join(__dirname, '../../public/index.html'));
+  });
+
+  // Usar el router centralizado para todas las rutas API
+  app.use('/api', router);
 
   return app;
 }

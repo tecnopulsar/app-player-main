@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-03-22T12:43:29.605Z",
+  "timestamp": "2025-03-25T13:51:50.588Z",
   "system": {
     "hostname": "base",
     "platform": "linux",
@@ -7,12 +7,12 @@
     "release": "6.12.18-v8+",
     "cpus": 4,
     "totalMem": 3923357696,
-    "freeMem": 1887440896,
-    "uptime": 140210.96,
+    "freeMem": 1415757824,
+    "uptime": 403511.9,
     "loadavg": [
-      1.48,
-      2.17,
-      2.74
+      1.86,
+      1.59,
+      1.84
     ],
     "network": {
       "lo": {
@@ -34,10 +34,10 @@
         "internal": false
       }
     },
-    "timestamp": "2025-03-22T12:43:29.557Z"
+    "timestamp": "2025-03-25T13:51:50.499Z"
   },
   "storage": {
-    "playlistDirectory": "./public/playlists",
+    "playlistDirectory": "./public/videos",
     "videosStats": {
       "exists": true,
       "isDirectory": true,
@@ -45,19 +45,19 @@
       "fileCount": 0
     },
     "totalSpace": 61641601024,
-    "freeSpace": 42165284864,
-    "usedSpace": 19476316160,
-    "timestamp": "2025-03-22T12:43:29.578Z"
+    "freeSpace": 42187874304,
+    "usedSpace": 19453726720,
+    "timestamp": "2025-03-25T13:51:50.549Z"
   },
   "vlc": {
     "connected": true,
-    "playing": false,
+    "playing": true,
     "paused": false,
-    "stopped": true,
-    "currentItem": null,
-    "position": 0,
-    "time": 0,
-    "length": 0,
+    "stopped": false,
+    "currentItem": "ForBiggerEscapes.mp4",
+    "position": 0.24266174435616,
+    "time": 3,
+    "length": 15,
     "volume": 0,
     "random": false,
     "repeat": false,
@@ -77,7 +77,7 @@
       "port": 8080
     },
     "version": "1.0.0",
-    "startTime": "2025-03-22T12:43:29.605Z",
+    "startTime": "2025-03-25T13:51:50.588Z",
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {

@@ -1,4 +1,3 @@
-import express from 'express';
 import { vlcRequest, vlcCommands } from '../services/vlcService.mjs';
 import { parseStringPromise } from 'xml2js';
 import path from 'path';
@@ -8,8 +7,7 @@ import { appConfig } from '../config/appConfig.mjs';
 import axios from 'axios';
 import { Router } from 'express';
 import FormData from 'form-data';
-import { networkInfo, device } from '../servers/serverClient.mjs';
-import { getActivePlaylist, updateActivePlaylist } from '../utils/activePlaylist.mjs';
+import { updateActivePlaylist } from '../utils/activePlaylist.mjs';
 
 const router = Router();
 let controllerClient;

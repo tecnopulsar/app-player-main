@@ -53,7 +53,7 @@ import axios from 'axios';
 import { getActivePlaylist } from './activePlaylist.mjs';
 import { getConfig } from '../config/appConfig.mjs';
 
-// Ruta del archivo de estado
+// Rutas de archivos de estado
 const STATE_FILE_PATH = path.join(process.cwd(), 'src/config/systemState.json');
 
 // Función para obtener información del sistema
@@ -414,22 +414,19 @@ export async function getSystemState() {
             if (vlcStatus && vlcStatus.connected && vlcStatus.playing && vlcStatus.currentItem) {
                 console.log(`ℹ️ VLC está reproduciendo: ${vlcStatus.currentItem}`);
 
-                // Intentar determinar a qué playlist pertenece el archivo actual
-                const playlistInfo = await determinarPlaylistDelArchivo(vlcStatus.currentItem);
-
-                if (playlistInfo) {
-                    console.log(`ℹ️ El archivo pertenece a la playlist: ${playlistInfo.playlistName}`);
+                // Usamos la playlist activa actual como fuente de información
+                const activePlaylist = await getActivePlaylist();
+                if (activePlaylist && activePlaylist.playlistName) {
+                    console.log(`ℹ️ Playlist activa configurada: ${activePlaylist.playlistName}`);
 
                     // Actualizar activePlaylist con los datos reales de lo que VLC está reproduciendo
                     systemState.activePlaylist = {
                         ...systemState.activePlaylist,
-                        playlistName: playlistInfo.playlistName,
-                        playlistPath: playlistInfo.playlistPath,
+                        ...activePlaylist,
                         // Mantener otros campos si existen
                         currentIndex: vlcStatus.position !== undefined ?
-                            Math.floor(vlcStatus.position * playlistInfo.fileCount) :
-                            systemState.activePlaylist.currentIndex,
-                        fileCount: playlistInfo.fileCount || systemState.activePlaylist.fileCount
+                            Math.floor(vlcStatus.position * activePlaylist.fileCount) :
+                            systemState.activePlaylist.currentIndex
                     };
 
                     console.log(`✅ Información de playlist sincronizada con estado real de VLC`);
@@ -439,46 +436,23 @@ export async function getSystemState() {
             console.warn(`⚠️ No se pudo obtener el estado de VLC para sincronizar: ${error.message}`);
         }
 
-        // Intentamos cargar información de la playlist activa desde activePlaylist.json
+        // Intentamos cargar información de la playlist activa desde systemState.json
         try {
-            if (fs.existsSync(ACTIVE_PLAYLIST_PATH)) {
-                const activePlaylistData = await fsPromises.readFile(ACTIVE_PLAYLIST_PATH, 'utf8');
-                const activePlaylistFile = JSON.parse(activePlaylistData);
-
-                // Verificamos si hay alguna playlist marcada como activa en el archivo
-                const activePlaylists = Object.entries(activePlaylistFile).filter(([_, playlist]) =>
-                    playlist.active === true
-                );
-
-                if (activePlaylists.length > 0) {
-                    const [playlistName, playlistInfo] = activePlaylists[0];
-
-                    // Solo actualizamos si la información de VLC no actualizó la playlist
-                    if (!vlcStatus || !vlcStatus.connected || systemState.activePlaylist.playlistPath === null) {
-                        // Actualizamos la información de activePlaylist con datos de activePlaylist.json
-                        // pero preservamos valores existentes para campos no proporcionados
-                        systemState.activePlaylist = {
-                            ...systemState.activePlaylist,
-                            playlistName,
-                            playlistPath: playlistInfo.playlistPath || systemState.activePlaylist.playlistPath,
-                            // Preservamos estos valores si existen, o usamos los nuevos si están disponibles
-                            fileCount: playlistInfo.fileCount || systemState.activePlaylist.fileCount,
-                            currentIndex: playlistInfo.currentIndex !== undefined ?
-                                playlistInfo.currentIndex : systemState.activePlaylist.currentIndex,
-                            isDefault: playlistInfo.isDefault !== undefined ?
-                                playlistInfo.isDefault : systemState.activePlaylist.isDefault,
-                            lastLoaded: playlistInfo.lastLoaded || systemState.activePlaylist.lastLoaded
-                        };
-                    }
-
-                    // Si tenemos el nombre pero no la ruta, intentamos reconstruirla
-                    if (!systemState.activePlaylist.playlistPath && systemState.activePlaylist.playlistName) {
-                        await reconstruirPathPlaylist(systemState.activePlaylist);
-                    }
+            if (fs.existsSync(STATE_FILE_PATH)) {
+                // Ya tenemos cargado systemState, verificamos si tiene información completa
+                // Si no, intentamos complementarla con getActivePlaylist()
+                const activePlaylist = await getActivePlaylist();
+                if (activePlaylist && activePlaylist.playlistName &&
+                    (!systemState.activePlaylist || !systemState.activePlaylist.playlistPath)) {
+                    console.log(`ℹ️ Complementando información de playlist desde getActivePlaylist()`);
+                    systemState.activePlaylist = {
+                        ...systemState.activePlaylist,
+                        ...activePlaylist
+                    };
                 }
             }
         } catch (err) {
-            console.error(`Error al leer activePlaylist.json: ${err.message}`);
+            console.error(`Error al verificar la información de la playlist activa: ${err.message}`);
         }
 
         // Aseguramos que playlistPath nunca sea null si tenemos playlistName
@@ -501,7 +475,7 @@ export async function getSystemState() {
         }
 
         // Obtener información de la aplicación
-        const app = await getAppInfo();
+        const app = getAppInfo();
 
         // Crear el estado del sistema con timestamp
         const newState = {
@@ -538,9 +512,9 @@ export async function saveSystemState(forceState = null) {
 
                 try {
                     // Importar appConfig para obtener las rutas
-                    const { getConfig } = await import('../config/appConfig.mjs');
                     const config = getConfig();
                     const playlistsDir = config.paths.playlists;
+                    const playlistDir = config.paths.videos || 'public/videos';
 
                     // Buscar en múltiples ubicaciones posibles
                     const possibleLocations = [
@@ -583,30 +557,19 @@ export async function saveSystemState(forceState = null) {
                 console.log(`ℹ️ VLC está reproduciendo: ${stateToSave.vlc.currentItem}`);
 
                 try {
-                    // Verificar si el item actual pertenece a la playlist activa
-                    const playlistInfo = await determinarPlaylistDelArchivo(stateToSave.vlc.currentItem);
+                    // Verificar la playlist activa actual
+                    const activePlaylist = await getActivePlaylist();
+                    if (activePlaylist && activePlaylist.playlistName) {
+                        console.log(`ℹ️ Playlist activa configurada: ${activePlaylist.playlistName}`);
 
-                    if (playlistInfo) {
-                        console.log(`ℹ️ El archivo pertenece a la playlist: ${playlistInfo.playlistName}`);
-
-                        // Si la playlist es diferente a la activa o no tenemos path, actualizar
-                        if (playlistInfo.playlistName !== stateToSave.activePlaylist.playlistName ||
-                            !stateToSave.activePlaylist.playlistPath) {
-
-                            console.log(`⚠️ Sincronizando activePlaylist con lo que VLC está reproduciendo realmente`);
-
-                            stateToSave.activePlaylist = {
-                                ...stateToSave.activePlaylist,
-                                playlistName: playlistInfo.playlistName,
-                                playlistPath: playlistInfo.playlistPath,
-                                fileCount: playlistInfo.fileCount || stateToSave.activePlaylist.fileCount,
-                                currentIndex: playlistInfo.currentIndex !== undefined ?
-                                    playlistInfo.currentIndex : stateToSave.activePlaylist.currentIndex
-                            };
-                        }
+                        // Actualizar la información de la playlist en el estado
+                        stateToSave.activePlaylist = {
+                            ...stateToSave.activePlaylist,
+                            ...activePlaylist
+                        };
                     }
                 } catch (error) {
-                    console.error(`❌ Error al verificar el archivo de la playlist: ${error.message}`);
+                    console.error(`❌ Error al verificar la playlist activa: ${error.message}`);
                 }
             }
         }
@@ -702,110 +665,6 @@ function startSystemStateMonitor(intervalMs = 60000) { // Por defecto cada minut
 }
 
 /**
- * Intenta determinar a qué playlist pertenece un archivo específico
- * @param {string} filename - Nombre del archivo que se está reproduciendo
- * @returns {Promise<Object|null>} - Información de la playlist o null si no se encontró
- */
-async function determinarPlaylistDelArchivo(filename) {
-    try {
-        console.log(`🔍 Buscando a qué playlist pertenece el archivo: ${filename}`);
-
-        // Obtener rutas de directorios
-        const { getConfig } = await import('../config/appConfig.mjs');
-        const config = getConfig();
-        const playlistsDir = config.paths.playlists
-
-        // Buscar en todas las carpetas de playlists
-        const playlists = [];
-
-        // Primero buscar en el directorio de playlists
-        if (fs.existsSync(playlistsDir)) {
-            const playlistFolders = await fsPromises.readdir(playlistsDir, { withFileTypes: true });
-
-            for (const dirent of playlistFolders) {
-                if (dirent.isDirectory()) {
-                    const playlistName = dirent.name;
-                    const playlistPath = path.join(playlistsDir, playlistName, `${playlistName}.m3u`);
-
-                    if (fs.existsSync(playlistPath)) {
-                        playlists.push({
-                            playlistName,
-                            playlistPath,
-                            directoryPath: path.join(playlistsDir, playlistName)
-                        });
-                    }
-                }
-            }
-        }
-
-        // También buscar en el directorio de videos si es diferente
-        if (playlistDir !== playlistsDir && fs.existsSync(playlistDir)) {
-            const videosFolders = await fsPromises.readdir(playlistDir, { withFileTypes: true });
-
-            for (const dirent of videosFolders) {
-                if (dirent.isDirectory()) {
-                    const playlistName = dirent.name;
-                    const playlistPath = path.join(playlistDir, playlistName, `${playlistName}.m3u`);
-
-                    if (fs.existsSync(playlistPath)) {
-                        playlists.push({
-                            playlistName,
-                            playlistPath,
-                            directoryPath: path.join(playlistDir, playlistName)
-                        });
-                    }
-                }
-            }
-        }
-
-        // Buscar el archivo en cada playlist
-        for (const playlist of playlists) {
-            try {
-                const playlistContent = await fsPromises.readFile(playlist.playlistPath, 'utf8');
-                const lines = playlistContent.split('\n')
-                    .filter(line => line.trim() && !line.startsWith('#'));
-
-                const fileCount = lines.length;
-
-                // Verificar si el archivo está en la playlist
-                const foundIndex = lines.findIndex(line => {
-                    const entryFilename = path.basename(line.trim());
-                    return entryFilename === filename || entryFilename.includes(filename);
-                });
-
-                if (foundIndex !== -1) {
-                    return {
-                        playlistName: playlist.playlistName,
-                        playlistPath: playlist.playlistPath,
-                        fileCount,
-                        currentIndex: foundIndex
-                    };
-                }
-
-                // También buscar el archivo físicamente en el directorio de la playlist
-                const filesInDir = await fsPromises.readdir(playlist.directoryPath);
-                if (filesInDir.includes(filename)) {
-                    return {
-                        playlistName: playlist.playlistName,
-                        playlistPath: playlist.playlistPath,
-                        fileCount,
-                        currentIndex: 0 // No sabemos el índice exacto
-                    };
-                }
-            } catch (err) {
-                console.warn(`⚠️ Error al leer playlist ${playlist.playlistPath}: ${err.message}`);
-            }
-        }
-
-        console.log(`⚠️ No se encontró el archivo ${filename} en ninguna playlist`);
-        return null;
-    } catch (error) {
-        console.error(`❌ Error al determinar playlist del archivo: ${error.message}`);
-        return null;
-    }
-}
-
-/**
  * Reconstruye la ruta de una playlist basada en su nombre
  * @param {Object} activePlaylist - Objeto de playlist activa a actualizar
  */
@@ -814,7 +673,6 @@ async function reconstruirPathPlaylist(activePlaylist) {
         console.log(`🔄 Reconstruyendo ruta para playlist: ${activePlaylist.playlistName}`);
 
         // Obtener rutas de directorios
-        const { getConfig } = await import('../config/appConfig.mjs');
         const config = getConfig();
         const playlistDir = config.paths.videos || 'public/videos';
         const playlistsDir = config.paths.playlists || playlistDir;
@@ -892,6 +750,5 @@ export {
     getAppInfo,
     loadSystemState,
     startSystemStateMonitor,
-    buscarArchivoRecursivo,
-    determinarPlaylistDelArchivo
+    buscarArchivoRecursivo
 }; 

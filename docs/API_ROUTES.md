@@ -7,6 +7,10 @@ Esta documentación detalla todas las rutas disponibles en la API, organizadas p
 2. [Gestión de Playlists](#gestión-de-playlists)
 3. [Subida de Archivos](#subida-de-archivos)
 4. [Playlist Activa](#playlist-activa)
+5. [Sistema](#sistema)
+6. [Aplicación](#aplicación)
+7. [Archivos](#archivos)
+8. [Clientes de Control](#clientes-de-control)
 
 ---
 
@@ -25,12 +29,21 @@ Devuelve el estado actual del reproductor VLC, incluyendo si está reproduciendo
 **Respuesta:**
 ```json
 {
-    "state": "playing",
-    "currentplid": "1",
-    "fullscreen": true,
-    "volume": "256",
-    "length": "120",
-    "position": "0.5"
+    "success": true,
+    "status": {
+        "connected": true,
+        "playing": true,
+        "paused": false,
+        "stopped": false,
+        "currentItem": "ForBiggerEscapes.mp4",
+        "position": 0.5,
+        "time": 65,
+        "length": 130,
+        "volume": 256,
+        "random": false,
+        "repeat": false,
+        "fullscreen": true
+    }
 }
 ```
 
@@ -145,16 +158,16 @@ Obtiene una lista de todas las playlists disponibles.
     "success": true,
     "playlists": [
         {
-            "name": "playlist_principal",
+            "name": "VideosCortos",
             "files": 3,
-            "created": "2023-03-18T14:30:45.123Z",
-            "path": "/home/tecno/app-player/public/videos/playlist_principal/playlist_principal.m3u"
+            "created": "2024-03-25T14:30:45.123Z",
+            "path": "/home/tecno/app-player/public/videos/VideosCortos/VideosCortos.m3u"
         },
         {
-            "name": "videos_institucionales",
+            "name": "Institucionales",
             "files": 5,
-            "created": "2023-03-17T10:15:30.456Z",
-            "path": "/home/tecno/app-player/public/videos/videos_institucionales/videos_institucionales.m3u"
+            "created": "2024-03-17T10:15:30.456Z",
+            "path": "/home/tecno/app-player/public/videos/Institucionales/Institucionales.m3u"
         }
     ]
 }
@@ -181,16 +194,16 @@ Obtiene información detallada de una playlist específica, incluyendo los archi
 {
     "success": true,
     "playlist": {
-        "name": "playlist_principal",
-        "path": "/home/tecno/app-player/public/videos/playlist_principal/playlist_principal.m3u",
+        "name": "VideosCortos",
+        "path": "/home/tecno/app-player/public/videos/VideosCortos/VideosCortos.m3u",
         "files": [
             {
-                "fileName": "video1.mp4",
-                "filePath": "/home/tecno/app-player/public/videos/playlist_principal/video1.mp4"
+                "fileName": "ForBiggerEscapes.mp4",
+                "filePath": "/home/tecno/app-player/public/videos/VideosCortos/ForBiggerEscapes.mp4"
             },
             {
-                "fileName": "video2.mp4",
-                "filePath": "/home/tecno/app-player/public/videos/playlist_principal/video2.mp4"
+                "fileName": "ForBiggerJoyrides.mp4",
+                "filePath": "/home/tecno/app-player/public/videos/VideosCortos/ForBiggerJoyrides.mp4"
             }
         ],
         "totalFiles": 2
@@ -200,7 +213,7 @@ Obtiene información detallada de una playlist específica, incluyendo los archi
 
 **Ejemplo Postman:**
 ```
-GET http://localhost:3000/api/vlc/playlists/playlist_principal
+GET http://localhost:3000/api/vlc/playlists/VideosCortos
 ```
 
 ### Eliminar una playlist
@@ -218,13 +231,13 @@ Elimina una playlist específica y todos sus archivos.
 ```json
 {
     "success": true,
-    "message": "Playlist 'playlist_principal' eliminada correctamente"
+    "message": "Playlist 'VideosCortos' eliminada correctamente"
 }
 ```
 
 **Ejemplo Postman:**
 ```
-DELETE http://localhost:3000/api/vlc/playlists/playlist_principal
+DELETE http://localhost:3000/api/vlc/playlists/VideosCortos
 ```
 
 ### Eliminar todas las playlists
@@ -263,18 +276,18 @@ Carga una playlist específica en VLC para su reproducción.
 ```json
 {
     "success": true,
-    "message": "Playlist 'playlist_principal' cargada correctamente",
+    "message": "Playlist 'VideosCortos' cargada correctamente",
     "playlist": {
-        "name": "playlist_principal",
-        "path": "/home/tecno/app-player/public/videos/playlist_principal/playlist_principal.m3u",
+        "name": "VideosCortos",
+        "path": "/home/tecno/app-player/public/videos/VideosCortos/VideosCortos.m3u",
         "files": [
             {
-                "fileName": "video1.mp4",
-                "filePath": "/home/tecno/app-player/public/videos/playlist_principal/video1.mp4"
+                "fileName": "ForBiggerEscapes.mp4",
+                "filePath": "/home/tecno/app-player/public/videos/VideosCortos/ForBiggerEscapes.mp4"
             },
             {
-                "fileName": "video2.mp4",
-                "filePath": "/home/tecno/app-player/public/videos/playlist_principal/video2.mp4"
+                "fileName": "ForBiggerJoyrides.mp4",
+                "filePath": "/home/tecno/app-player/public/videos/VideosCortos/ForBiggerJoyrides.mp4"
             }
         ],
         "totalFiles": 2
@@ -284,7 +297,7 @@ Carga una playlist específica en VLC para su reproducción.
 
 **Ejemplo Postman:**
 ```
-POST http://localhost:3000/api/vlc/playlist/load/playlist_principal
+POST http://localhost:3000/api/vlc/playlist/load/VideosCortos
 ```
 
 ---
@@ -313,12 +326,59 @@ Este endpoint flexible permite subir uno o varios archivos a una playlist. Sopor
 - `mode` (form-data, opcional): Modo de subida ('single', 'multi', 'progressive', o 'auto')
 - `isDefault` (form-data, opcional): Si es `true`, establece la playlist como la playlist por defecto del sistema
 
+**Respuesta (Modo Individual/Progresivo, archivo intermedio):**
+```json
+{
+    "success": true,
+    "message": "Archivo subido correctamente (1/3)",
+    "file": {
+        "filename": "ForBiggerEscapes.mp4",
+        "size": 12345678,
+        "path": "/home/tecno/app-player/public/videos/VideosCortos/ForBiggerEscapes.mp4"
+    },
+    "playlist": {
+        "name": "VideosCortos",
+        "path": "/home/tecno/app-player/public/videos/VideosCortos/VideosCortos.m3u",
+        "currentProgress": 1,
+        "totalFiles": 3
+    }
+}
+```
+
+**Respuesta (Modo Múltiple o progresivo completado):**
+```json
+{
+    "success": true,
+    "message": "Todos los archivos (3) han sido subidos correctamente",
+    "playlist": {
+        "name": "VideosCortos",
+        "path": "/home/tecno/app-player/public/videos/VideosCortos/VideosCortos.m3u",
+        "files": [
+            {
+                "fileName": "ForBiggerEscapes.mp4",
+                "filePath": "/home/tecno/app-player/public/videos/VideosCortos/ForBiggerEscapes.mp4"
+            },
+            {
+                "fileName": "ForBiggerJoyrides.mp4",
+                "filePath": "/home/tecno/app-player/public/videos/VideosCortos/ForBiggerJoyrides.mp4"
+            },
+            {
+                "fileName": "ForBiggerMeltdowns.mp4",
+                "filePath": "/home/tecno/app-player/public/videos/VideosCortos/ForBiggerMeltdowns.mp4"
+            }
+        ],
+        "totalFiles": 3,
+        "isDefault": false
+    }
+}
+```
+
 **Ejemplo Postman (Modo Individual):**
 ```
 POST http://localhost:3000/api/playlist/upload
 Body: form-data
 - file: [seleccionar archivo]
-- playlistName: mi_playlist
+- playlistName: VideosCortos
 - mode: single
 ```
 
@@ -327,375 +387,358 @@ Body: form-data
 POST http://localhost:3000/api/playlist/upload
 Body: form-data
 - files: [seleccionar múltiples archivos]
-- playlistName: mi_playlist
+- playlistName: VideosCortos
 - mode: multi
 ```
-
-**Ejemplo Postman (Modo Progresivo):**
-```
-POST http://localhost:3000/api/playlist/upload
-Body: form-data
-- file: [seleccionar archivo]
-- playlistName: mi_playlist
-- countPlaylistItems: 3
-- mode: progressive
-```
-
-**Ejemplo Postman (Playlist por Defecto):**
-```
-POST http://localhost:3000/api/playlist/upload
-Body: form-data
-- files: [seleccionar múltiples archivos]
-- isDefault: true
-- mode: multi
-```
-
-**Respuesta (Modo Individual/Progresivo, archivo intermedio):**
-```json
-{
-    "success": true,
-    "message": "Archivo procesado correctamente",
-    "progress": {
-        "current": 1,
-        "total": 3,
-        "filename": "video1.mp4",
-        "isDefault": false
-    }
-}
-```
-
-**Respuesta (Modo Individual/Progresivo, último archivo):**
-```json
-{
-    "success": true,
-    "message": "Playlist procesada correctamente",
-    "playlist": {
-        "name": "mi_playlist",
-        "path": "/home/tecno/app-player/public/videos/playlists/mi_playlist/mi_playlist.m3u",
-        "totalFiles": 3,
-        "isDefault": false
-    }
-}
-```
-
-**Respuesta (Modo Múltiple, playlist por defecto):**
-```json
-{
-    "success": true,
-    "message": "Playlist por defecto procesada correctamente",
-    "playlist": {
-        "name": "default",
-        "path": "/home/tecno/app-player/public/videos/playlists/default/default.m3u",
-        "totalFiles": 3,
-        "files": ["video1.mp4", "video2.mp4", "video3.mp4"],
-        "isDefault": true
-    }
-}
-```
-
-### Establecer una playlist existente como playlist por defecto
-
-```
-POST /api/playlist/set-default/{nombre_playlist}
-```
-
-Establece una playlist existente como la playlist por defecto del sistema.
-
-**Parámetros:**
-- `nombre_playlist` (en la URL): Nombre de la playlist a establecer como por defecto
-
-**Respuesta:**
-```json
-{
-    "success": true,
-    "message": "Playlist 'mi_playlist' establecida como playlist por defecto",
-    "playlist": {
-        "name": "mi_playlist",
-        "path": "/home/tecno/app-player/public/videos/playlists/mi_playlist/mi_playlist.m3u",
-        "isDefault": true
-    }
-}
-```
-
-**Ejemplo Postman:**
-```
-POST http://localhost:3000/api/playlist/set-default/mi_playlist
-```
-
-### Eliminar una playlist
-
-```
-DELETE /api/playlist/{nombre_playlist}
-```
-
-Elimina una playlist específica y todos sus archivos. La playlist por defecto no puede ser eliminada sin confirmación explícita.
-
-**Parámetros:**
-- `nombre_playlist` (en la URL): Nombre de la playlist a eliminar
-- `force` (query parameter, opcional): Si es `true`, permite eliminar la playlist por defecto
-
-**Respuesta (Playlist normal):**
-```json
-{
-    "success": true,
-    "message": "Playlist 'mi_playlist' eliminada correctamente"
-}
-```
-
-**Respuesta (Intento de eliminar playlist por defecto sin confirmación):**
-```json
-{
-    "success": false,
-    "message": "No se puede eliminar la playlist por defecto sin confirmación",
-    "needsConfirmation": true,
-    "defaultPlaylist": true
-}
-```
-
-**Ejemplo Postman (Playlist normal):**
-```
-DELETE http://localhost:3000/api/playlist/mi_playlist
-```
-
-**Ejemplo Postman (Eliminar playlist por defecto):**
-```
-DELETE http://localhost:3000/api/playlist/default?force=true
-```
-
-## Colección Postman
-
-Para facilitar las pruebas, puedes importar la siguiente colección en Postman:
-
-```json
-{
-  "info": {
-    "name": "App-Player API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Control VLC",
-      "item": [
-        {
-          "name": "Estado VLC",
-          "request": {
-            "method": "GET",
-            "url": "http://localhost:3000/api/vlc/status"
-          }
-        },
-        {
-          "name": "Iniciar Reproducción",
-          "request": {
-            "method": "GET",
-            "url": "http://localhost:3000/api/vlc/play"
-          }
-        },
-        {
-          "name": "Pausar Reproducción",
-          "request": {
-            "method": "GET",
-            "url": "http://localhost:3000/api/vlc/pause"
-          }
-        },
-        {
-          "name": "Detener Reproducción",
-          "request": {
-            "method": "GET",
-            "url": "http://localhost:3000/api/vlc/stop"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Gestión Playlists",
-      "item": [
-        {
-          "name": "Listar Playlists",
-          "request": {
-            "method": "GET",
-            "url": "http://localhost:3000/api/vlc/playlists"
-          }
-        },
-        {
-          "name": "Detalles Playlist",
-          "request": {
-            "method": "GET",
-            "url": "http://localhost:3000/api/vlc/playlists/{{playlist_name}}"
-          }
-        },
-        {
-          "name": "Eliminar Playlist",
-          "request": {
-            "method": "DELETE",
-            "url": "http://localhost:3000/api/vlc/playlists/{{playlist_name}}"
-          }
-        },
-        {
-          "name": "Eliminar Todas las Playlists",
-          "request": {
-            "method": "DELETE",
-            "url": "http://localhost:3000/api/vlc/playlists"
-          }
-        },
-        {
-          "name": "Cargar Playlist",
-          "request": {
-            "method": "POST",
-            "url": "http://localhost:3000/api/vlc/playlist/load/{{playlist_name}}"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Subida de Archivos",
-      "item": [
-        {
-          "name": "Subir Archivos Múltiples",
-          "request": {
-            "method": "POST",
-            "url": "http://localhost:3000/api/playlist/upload",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "files",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "playlistName",
-                  "value": "mi_playlist",
-                  "type": "text"
-                },
-                {
-                  "key": "mode",
-                  "value": "multi",
-                  "type": "text"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Subir Archivo Individual",
-          "request": {
-            "method": "POST",
-            "url": "http://localhost:3000/api/playlist/upload",
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "playlistName",
-                  "value": "mi_playlist",
-                  "type": "text"
-                },
-                {
-                  "key": "countPlaylistItems",
-                  "value": "1",
-                  "type": "text"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    }
-  ],
-  "variable": [
-    {
-      "key": "playlist_name",
-      "value": "mi_playlist"
-    }
-  ]
-}
-```
-
-Para usar esta colección:
-1. Copia el JSON anterior
-2. En Postman, haz clic en "Import" > "Raw text"
-3. Pega el JSON y haz clic en "Import"
-4. Ajusta la variable `playlist_name` según necesites 
 
 ## Playlist Activa
 
-Endpoints para gestionar la información de la playlist actualmente activa.
+Endpoints para gestionar la playlist activa.
 
-### Obtener información de la playlist activa
+### Obtener todas las playlists
 
 ```
-GET /api/active-playlist
+GET /api/active-playlist/all
 ```
 
-Obtiene información sobre la playlist actualmente configurada como activa.
+Obtiene todas las playlists disponibles.
 
 **Respuesta:**
 ```json
 {
     "success": true,
-    "activePlaylist": {
-        "playlistName": "default",
-        "playlistPath": "./public/videos/playlists/default/default.m3u",
-        "lastLoaded": "2023-03-20T15:30:45.123Z",
-        "isActive": true,
-        "isDefault": true
+    "playlists": [
+        {
+            "playlistName": "VideosCortos",
+            "playlistPath": "/home/tecno/app-player/public/videos/VideosCortos/VideosCortos.m3u",
+            "fileCount": 3,
+            "lastLoaded": "2024-03-26T12:30:00.000Z",
+            "isActive": true
+        },
+        {
+            "playlistName": "Institucionales",
+            "playlistPath": "/home/tecno/app-player/public/videos/Institucionales/Institucionales.m3u",
+            "fileCount": 5,
+            "lastLoaded": "2024-03-25T10:15:00.000Z",
+            "isActive": false
+        }
+    ]
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/active-playlist/all
+```
+
+### Eliminar playlists excepto la activa
+
+```
+DELETE /api/active-playlist/purge?keepActive=true
+```
+
+Elimina todas las playlists excepto la que está marcada como activa.
+
+**Parámetros:**
+- `keepActive` (query): Si es "true", mantiene la playlist activa
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Se eliminaron todas las playlists excepto la activa",
+    "deleted": 2,
+    "kept": "VideosCortos"
+}
+```
+
+**Ejemplo Postman:**
+```
+DELETE http://localhost:3000/api/active-playlist/purge?keepActive=true
+```
+
+### Eliminar todas las playlists
+
+```
+DELETE /api/active-playlist/purge
+```
+
+Elimina absolutamente todas las playlists, incluyendo la activa.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Se eliminaron todas las playlists",
+    "deleted": 3
+}
+```
+
+**Ejemplo Postman:**
+```
+DELETE http://localhost:3000/api/active-playlist/purge
+```
+
+## Sistema
+
+Endpoints para gestionar información del sistema.
+
+### Obtener información del sistema
+
+```
+GET /api/system/info
+```
+
+Devuelve información básica del sistema.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "system": {
+        "hostname": "base",
+        "platform": "linux",
+        "arch": "x64",
+        "cpus": 4,
+        "totalMem": 8589934592,
+        "freeMem": 4294967296,
+        "uptime": 86400,
+        "networkInterfaces": {
+            "eth0": {
+                "address": "192.168.1.200",
+                "mac": "00:11:22:33:44:55"
+            }
+        },
+        "timestamp": "2024-03-26T12:00:00.000Z"
     }
 }
 ```
 
 **Ejemplo Postman:**
 ```
-GET http://localhost:3000/api/active-playlist
+GET http://localhost:3000/api/system/info
 ```
 
-### Establecer una playlist como activa
+### Obtener estado del sistema
 
 ```
-POST /api/active-playlist
+GET /api/system/state
 ```
 
-Establece una playlist específica como la playlist activa del sistema.
-
-**Body:**
-```json
-{
-    "playlistName": "mi_playlist"
-}
-```
+Devuelve el estado completo del sistema.
 
 **Respuesta:**
 ```json
 {
     "success": true,
-    "message": "Playlist 'mi_playlist' establecida como activa",
-    "activePlaylist": {
-        "playlistName": "mi_playlist",
-        "playlistPath": "/home/tecno/app-player/public/videos/mi_playlist/mi_playlist.m3u",
-        "lastLoaded": "2023-03-20T15:35:12.456Z",
-        "isActive": true
+    "state": {
+        "timestamp": "2024-03-26T12:00:00.000Z",
+        "system": { /* información del sistema */ },
+        "storage": { /* información de almacenamiento */ },
+        "vlc": { /* estado de VLC */ },
+        "app": { /* información de la aplicación */ },
+        "activePlaylist": { /* información de la playlist activa */ }
     }
 }
 ```
 
 **Ejemplo Postman:**
 ```
-POST http://localhost:3000/api/active-playlist
-Content-Type: application/json
+GET http://localhost:3000/api/system/state
+```
 
+### Guardar estado del sistema
+
+```
+POST /api/system/state/save
+```
+
+Guarda el estado actual del sistema.
+
+**Respuesta:**
+```json
 {
-    "playlistName": "mi_playlist"
+    "success": true,
+    "message": "Estado del sistema guardado correctamente",
+    "timestamp": "2024-03-26T12:00:00.000Z"
 }
 ```
 
-#### Notas sobre la Playlist Activa
+**Ejemplo Postman:**
+```
+POST http://localhost:3000/api/system/state/save
+```
 
-- Al iniciar la aplicación, el sistema verifica la existencia del archivo `src/config/activePlaylist.json` que almacena la información de la playlist activa.
-- Si el archivo no existe, se crea automáticamente con valores nulos.
-- VLC solo se iniciará si existe una playlist activa válida.
-- La playlist por defecto (configurada en `appConfig.app.defaultPlaylist`) no puede ser eliminada sin confirmación explícita.
-- Cualquier playlist cargada a través de `/api/vlc/playlist/load/{nombre_playlist}` actualiza automáticamente el archivo de configuración de la playlist activa.
-- Cuando se marca una playlist como por defecto (con `isDefault=true` o a través de `/api/playlist/set-default/{nombre_playlist}`), esta se establece automáticamente como la playlist activa. 
+## Aplicación
+
+Endpoints para gestionar la aplicación.
+
+### Obtener información de la aplicación
+
+```
+GET /api/app/info
+```
+
+Devuelve información sobre la aplicación.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "app": {
+        "name": "app-player",
+        "version": "1.0.0",
+        "deviceId": "base",
+        "deviceName": "base",
+        "deviceType": "player",
+        "server": {
+            "port": 3000,
+            "host": "0.0.0.0"
+        }
+    }
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/app/info
+```
+
+## Archivos
+
+Endpoints para gestionar archivos.
+
+### Listar archivos
+
+```
+GET /api/files/list
+```
+
+Lista archivos en un directorio específico.
+
+**Parámetros:**
+- `dir` (query, opcional): Directorio a listar, por defecto 'public/videos'
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "path": "public/videos",
+    "files": [
+        {
+            "name": "VideosCortos",
+            "isDirectory": true,
+            "size": 0,
+            "modified": "2024-03-26T12:00:00.000Z"
+        },
+        {
+            "name": "video.mp4",
+            "isDirectory": false,
+            "size": 1048576,
+            "modified": "2024-03-26T10:30:00.000Z"
+        }
+    ]
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/files/list?dir=public/videos
+```
+
+### Eliminar archivo
+
+```
+DELETE /api/files/delete
+```
+
+Elimina un archivo específico.
+
+**Parámetros:**
+- `file` (query): Ruta del archivo a eliminar
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Archivo eliminado correctamente",
+    "file": "public/videos/video.mp4"
+}
+```
+
+**Ejemplo Postman:**
+```
+DELETE http://localhost:3000/api/files/delete?file=public/videos/video.mp4
+```
+
+## Clientes de Control
+
+App-Player implementa clientes que permiten la comunicación bidireccional con servidores de control y monitoreo.
+
+### ControllerClient
+
+El `ControllerClient` permite la comunicación con un servidor de control central y otro de monitoreo, facilitando:
+
+- Control remoto del reproductor VLC
+- Monitoreo del estado del dispositivo
+- Envío periódico de heartbeats con información del estado
+- Captura de snapshots de la reproducción actual
+
+#### Configuración
+
+```json
+{
+    "controller": {
+        "url": "http://servidor-control.ejemplo.com:3001",
+        "heartbeatInterval": 25000,
+        "verboseLogs": false,
+        "maxReconnectAttempts": 5
+    },
+    "monitor": {
+        "url": "http://servidor-monitor.ejemplo.com:3002"
+    },
+    "device": {
+        "name": "reproductor-sala-principal",
+        "id": "player-001"
+    }
+}
+```
+
+#### Eventos Soportados
+
+El cliente responde a los siguientes eventos del servidor:
+
+- `PLAY`: Inicia la reproducción
+- `PAUSE`: Pausa la reproducción
+- `STOP`: Detiene la reproducción
+- `NEXT`: Avanza al siguiente elemento de la playlist
+- `PREVIOUS`: Retrocede al elemento anterior de la playlist
+- `VOLUME_UP`: Aumenta el volumen
+- `VOLUME_DOWN`: Disminuye el volumen
+- `MUTE`: Silencia el audio
+- `UNMUTE`: Restaura el volumen
+
+### DeviceClient
+
+El `DeviceClient` es una versión simplificada del ControllerClient enfocada únicamente en heartbeats y comunicación básica.
+
+#### Uso desde Código
+
+```javascript
+import ControllerClient from './src/clients/controllerClient.mjs';
+import DeviceClient from './src/clients/deviceClient.mjs';
+
+// Crear y conectar un cliente de controlador
+const controllerClient = new ControllerClient();
+controllerClient.connect();
+
+// O crear un cliente de dispositivo simple
+const deviceClient = new DeviceClient();
+deviceClient.connect();
+
+// Enviar un evento de estado manualmente
+controllerClient.sendStatus('active');
+
+// Desconectar cuando sea necesario
+controllerClient.disconnect();
+``` 

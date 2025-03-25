@@ -8,11 +8,19 @@ import vlcEndpoints from './vlcEndpoints.mjs';
 import appEndpoints from './appEndpoints.mjs';
 import fileHandler from './fileHandler.mjs';
 import defaultEndpoints from './endpoints.mjs';
-import activePlaylistEndpoints from './activePlaylistEndpoints.mjs';
+import playlistEndpoints from './playlistEndpoints.mjs';
 import { Router } from 'express';
 
 // Crear el router principal para todas las rutas API
 const router = Router();
+
+// Endpoint de health check para verificación de disponibilidad
+router.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString()
+    });
+});
 
 // Configurar todas las rutas con sus prefijos correspondientes
 router.use('/', defaultEndpoints);           // Endpoints generales y raíz
@@ -21,7 +29,7 @@ router.use('/playlist', playlistUploadHandler); // Gestión de playlists
 router.use('/vlc', vlcEndpoints);            // Control de VLC
 router.use('/app', appEndpoints);            // Información de la aplicación
 router.use('/files', fileHandler);           // Gestión de archivos
-router.use('/active-playlist', activePlaylistEndpoints); // Playlist activa
+router.use('/active-playlist', playlistEndpoints); // Playlist activa
 router.use('/snapshot', vlcEndpoints);       // Acceso directo a snapshot
 
 // Exportar el router configurado como valor por defecto

@@ -1,19 +1,21 @@
 import { io } from 'socket.io-client';
 import { getVLCStatus, getPlaylistInfo } from '../utils/vlcStatus.js';
-import { getLocalIP, getMACAddress } from '../utils/networkUtils.js';
+import { getLocalIP, getMACAddress } from '../utils/networkUtils.mjs';
+import { getConfig } from '../config/appConfig.mjs';
 import axios from 'axios';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 
 class ControllerClient {
-    constructor(serverUrl, monitorUrl = 'http://localhost:3002') {
-        this.serverUrl = serverUrl;
-        this.monitorUrl = monitorUrl;
+    constructor(serverUrl = null, monitorUrl = null) {
+        const config = getConfig();
+        this.serverUrl = serverUrl || config.controller?.url || 'http://localhost:3001';
+        this.monitorUrl = monitorUrl || config.monitor?.url || 'http://localhost:3002';
         this.socket = null;
         this.monitorSocket = null;
         this.deviceInfo = {
             id: null,
-            name: null,
+            name: config.device?.name || null,
             ip: getLocalIP(),
             mac: getMACAddress(),
             status: 'active',
@@ -21,41 +23,78 @@ class ControllerClient {
             playlistInfo: null,
             lastSeen: new Date().toISOString()
         };
-        this.heartbeatInterval = 25000; // 25 segundos
+        this.heartbeatInterval = config.controller?.heartbeatInterval || 25000;
+        this.verboseLogs = config.controller?.verboseLogs || false;
         this.intervalId = null;
         this.lastHeartbeatTime = Date.now();
         this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
+        this.maxReconnectAttempts = config.controller?.maxReconnectAttempts || 5;
     }
 
     connect() {
         try {
             console.log('\n=== Iniciando Conexión con Controlador ===');
             console.log(`URL del servidor: ${this.serverUrl}`);
+            console.log(`URL del monitor: ${this.monitorUrl}`);
 
-            // Conectar al servidor controlador
-            this.socket = io(this.serverUrl, {
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000,
-                timeout: 20000
-            });
+            // Verificar disponibilidad de los servidores antes de conectar
+            this.checkServerAvailability(this.serverUrl)
+                .then(available => {
+                    if (available) {
+                        this.connectToController();
+                    } else {
+                        console.warn(`⚠️ Servidor controlador no disponible en ${this.serverUrl}`);
+                    }
+                });
 
-            // Conectar al servidor de monitoreo
-            this.monitorSocket = io(this.monitorUrl, {
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000,
-                timeout: 20000
-            });
-
-            this.setupEventListeners();
-            this.setupMonitorListeners();
+            this.checkServerAvailability(this.monitorUrl)
+                .then(available => {
+                    if (available) {
+                        this.connectToMonitor();
+                    } else {
+                        console.warn(`⚠️ Servidor monitor no disponible en ${this.monitorUrl}`);
+                    }
+                });
         } catch (error) {
             console.error('=== Error de Inicialización ===');
             console.error('Error al conectar con los servidores:', error);
             console.error('=============================');
         }
+    }
+
+    async checkServerAvailability(url) {
+        try {
+            // Usar axios con un timeout corto para verificar disponibilidad
+            await axios.get(`${url}/health`, { timeout: 3000 });
+            return true;
+        } catch (error) {
+            // Si hay error o timeout, consideramos que el servidor no está disponible
+            return false;
+        }
+    }
+
+    connectToController() {
+        // Conectar al servidor controlador
+        this.socket = io(this.serverUrl, {
+            reconnection: true,
+            reconnectionAttempts: this.maxReconnectAttempts,
+            reconnectionDelay: 1000,
+            timeout: 20000
+        });
+
+        this.setupEventListeners();
+    }
+
+    connectToMonitor() {
+        // Conectar al servidor de monitoreo
+        this.monitorSocket = io(this.monitorUrl, {
+            reconnection: true,
+            reconnectionAttempts: this.maxReconnectAttempts,
+            reconnectionDelay: 1000,
+            timeout: 20000
+        });
+
+        this.setupMonitorListeners();
     }
 
     setupEventListeners() {
@@ -176,11 +215,13 @@ class ControllerClient {
     }
 
     async startHeartbeat() {
-        console.log('Iniciando sistema de heartbeat...');
+        console.log(`Iniciando sistema de heartbeat (intervalo: ${this.heartbeatInterval}ms)...`);
         this.intervalId = setInterval(async () => {
             if (this.socket && this.socket.connected) {
                 const now = Date.now();
-                console.log(`\nTiempo desde último heartbeat: ${now - this.lastHeartbeatTime}ms`);
+                if (this.verboseLogs) {
+                    console.log(`\nTiempo desde último heartbeat: ${now - this.lastHeartbeatTime}ms`);
+                }
                 this.lastHeartbeatTime = now;
 
                 // Obtener el estado actual de VLC
@@ -201,7 +242,9 @@ class ControllerClient {
                 try {
                     snapshot = await this.getSnapshot();
                 } catch (snapshotError) {
-                    console.error('Error al obtener snapshot:', snapshotError);
+                    if (this.verboseLogs) {
+                        console.error('Error al obtener snapshot:', snapshotError);
+                    }
                 }
 
                 this.deviceInfo.lastSeen = new Date().toISOString();
@@ -226,31 +269,40 @@ class ControllerClient {
                 if (this.monitorSocket && this.monitorSocket.connected) {
                     this.monitorSocket.emit('heartbeat', heartbeatData);
                     this.reconnectAttempts = 0; // Resetear intentos de reconexión
-                } else {
+                } else if (this.verboseLogs) {
                     console.warn('Socket de monitoreo no conectado, intentando reconectar...');
                     this.reconnectMonitor();
                 }
 
-                console.log('=== Heartbeat Enviado ===');
-                console.log(`ID: ${heartbeatData.id || 'No asignado'}`);
-                console.log(`Nombre: ${heartbeatData.name || 'Sin nombre'}`);
-                console.log(`IP: ${heartbeatData.ip}`);
-                console.log(`MAC: ${heartbeatData.mac}`);
-                console.log(`Estado: ${heartbeatData.status ? 'Activo' : 'Inactivo'}`);
-                console.log(`VLC Estado: ${heartbeatData.vlc.status.status}`);
-                console.log(`VLC Reproduciendo: ${heartbeatData.vlc.status.playing ? 'Sí' : 'No'}`);
-                console.log(`Archivo actual: ${heartbeatData.vlc.status.currentItem || 'Ninguno'}`);
-                console.log(`Playlist: ${heartbeatData.vlc.playlist.name} (${heartbeatData.vlc.playlist.totalItems} archivos)`);
-                console.log(`Snapshot: ${snapshot ? 'Incluido' : 'No disponible'}`);
-                console.log(`Última vez visto: ${heartbeatData.lastSeen}`);
-                console.log(`Socket controlador: ${this.socket.connected}`);
-                console.log(`Socket monitoreo: ${this.monitorSocket?.connected || false}`);
-                console.log('=======================\n');
+                if (this.verboseLogs) {
+                    this.logHeartbeatDetails(heartbeatData, snapshot);
+                } else {
+                    // Log mínimo para no saturar la consola
+                    console.log(`Heartbeat enviado [${heartbeatData.id || 'No ID'}] - VLC: ${heartbeatData.vlc.status.connected ? 'Conectado' : 'Desconectado'} - ${heartbeatData.vlc.status.currentItem || 'Sin archivo'}`);
+                }
             } else {
                 console.warn('No se pudo enviar heartbeat: Socket no conectado');
                 this.reconnectController();
             }
         }, this.heartbeatInterval);
+    }
+
+    logHeartbeatDetails(heartbeatData, snapshot) {
+        console.log('=== Heartbeat Enviado ===');
+        console.log(`ID: ${heartbeatData.id || 'No asignado'}`);
+        console.log(`Nombre: ${heartbeatData.name || 'Sin nombre'}`);
+        console.log(`IP: ${heartbeatData.ip}`);
+        console.log(`MAC: ${heartbeatData.mac}`);
+        console.log(`Estado: ${heartbeatData.status ? 'Activo' : 'Inactivo'}`);
+        console.log(`VLC Estado: ${heartbeatData.vlc.status.status}`);
+        console.log(`VLC Reproduciendo: ${heartbeatData.vlc.status.playing ? 'Sí' : 'No'}`);
+        console.log(`Archivo actual: ${heartbeatData.vlc.status.currentItem || 'Ninguno'}`);
+        console.log(`Playlist: ${heartbeatData.vlc.playlist.name} (${heartbeatData.vlc.playlist.totalItems} archivos)`);
+        console.log(`Snapshot: ${snapshot ? 'Incluido' : 'No disponible'}`);
+        console.log(`Última vez visto: ${heartbeatData.lastSeen}`);
+        console.log(`Socket controlador: ${this.socket.connected}`);
+        console.log(`Socket monitoreo: ${this.monitorSocket?.connected || false}`);
+        console.log('=======================\n');
     }
 
     reconnectMonitor() {
@@ -262,14 +314,7 @@ class ControllerClient {
                 this.monitorSocket.disconnect();
             }
 
-            this.monitorSocket = io(this.monitorUrl, {
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000,
-                timeout: 20000
-            });
-
-            this.setupMonitorListeners();
+            this.connectToMonitor();
         } else {
             console.error('Máximo número de intentos de reconexión alcanzado');
         }
@@ -284,14 +329,7 @@ class ControllerClient {
                 this.socket.disconnect();
             }
 
-            this.socket = io(this.serverUrl, {
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000,
-                timeout: 20000
-            });
-
-            this.setupEventListeners();
+            this.connectToController();
         } else {
             console.error('Máximo número de intentos de reconexión alcanzado');
         }
@@ -359,7 +397,9 @@ class ControllerClient {
             }
             return null;
         } catch (error) {
-            console.error('Error al obtener snapshot:', error);
+            if (this.verboseLogs) {
+                console.error('Error al obtener snapshot:', error);
+            }
             return null;
         }
     }
@@ -387,12 +427,14 @@ class ControllerClient {
                 // Enviar heartbeat al servidor de monitoreo
                 this.monitorSocket.emit('heartbeat', heartbeatInfo);
 
-                console.log('\n=== Heartbeat Enviado a Monitor ===');
-                console.log(`ID: ${heartbeatInfo.id || 'No asignado'}`);
-                console.log(`Timestamp: ${heartbeatInfo.timestamp}`);
-                console.log(`Estado: ${heartbeatInfo.status}`);
-                console.log(`Snapshot: ${snapshot ? 'Incluido' : 'No disponible'}`);
-                console.log('================================\n');
+                if (this.verboseLogs) {
+                    console.log('\n=== Heartbeat Enviado a Monitor ===');
+                    console.log(`ID: ${heartbeatInfo.id || 'No asignado'}`);
+                    console.log(`Timestamp: ${heartbeatInfo.timestamp}`);
+                    console.log(`Estado: ${heartbeatInfo.status}`);
+                    console.log(`Snapshot: ${snapshot ? 'Incluido' : 'No disponible'}`);
+                    console.log('================================\n');
+                }
 
                 return true;
             } catch (error) {
@@ -400,7 +442,9 @@ class ControllerClient {
                 return false;
             }
         } else {
-            console.warn('No se pudo enviar heartbeat al monitor: Socket no conectado');
+            if (this.verboseLogs) {
+                console.warn('No se pudo enviar heartbeat al monitor: Socket no conectado');
+            }
             this.reconnectMonitor();
             return false;
         }

@@ -1,4 +1,5 @@
 // main.js
+console.log('🔄 Iniciando la aplicación...');
 import { app, ipcMain, BrowserWindow } from 'electron';
 import { fileURLToPath } from 'url';
 import path, { dirname } from 'path';
@@ -9,12 +10,12 @@ import { initializeServer, stopServer } from './src/servers/serverClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
 import ControllerClient from './src/clients/controllerClient.mjs';
 import { getVLCStatus } from './src/utils/vlcStatus.js';
-import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.js';
+import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.mjs';
 import { setControllerClient } from './src/routes/vlcEndpoints.mjs';
-import { getActivePlaylist, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
 import { startSystemStateMonitor } from './src/utils/systemState.mjs';
-
+import { getActivePlaylist, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
 // Deshabilitar la aceleración por hardware
+console.log('🔄 Deshabilitando la aceleración por hardware...');
 app.disableHardwareAcceleration();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -65,7 +66,10 @@ async function createWindow() {
 
     // Inicializar el cliente de controlador
     console.log('\n=== Iniciando Cliente de Controlador ===');
-    controllerClient = new ControllerClient('http://localhost:3001');
+    // Obtener URLs desde la configuración
+    const controllerUrl = appConfig.controller?.url || 'http://localhost:3001';
+    const monitorUrl = appConfig.monitor?.url || 'http://localhost:3002';
+    controllerClient = new ControllerClient(controllerUrl, monitorUrl);
     controllerClient.connect();
 
     // Configurar el cliente controlador para los endpoints de VLC
@@ -175,6 +179,7 @@ async function createWindow() {
 
 // Este método se llamará cuando Electron haya terminado
 // la inicialización y esté listo para crear ventanas del navegador.
+console.log('🔄 Esperando a que Electron esté listo para crear ventanas del navegador...');
 app.whenReady().then(createWindow);
 
 // Salir cuando todas las ventanas estén cerradas

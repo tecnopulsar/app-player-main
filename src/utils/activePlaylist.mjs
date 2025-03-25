@@ -3,8 +3,6 @@
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
-import { getConfig } from '../config/appConfig.mjs';
-const { saveSystemState, getSystemState } = await import('./systemState.mjs');
 
 // Ruta del archivo de playlist activa
 const STATE_FILE_PATH = path.join(process.cwd(), 'src/config/systemState.json');
@@ -144,9 +142,59 @@ async function getActivePlaylist() {
     }
 }
 
+/** ✅
+ * Verifica que el archivo de playlist activa exista y lo inicializa si es necesario
+ * @returns {Promise<boolean>} true si el archivo existe o se creó correctamente
+ */
+async function verifyActivePlaylistFile() {
+    try {
+        // Verificar si el archivo existe
+        if (!fs.existsSync(STATE_FILE_PATH)) {
+            console.log('⚠️ El archivo systemState.json no existe. Creando...');
+
+            // Crear el directorio si no existe
+            const dir = path.dirname(STATE_FILE_PATH);
+            if (!fs.existsSync(dir)) {
+                await fsPromises.mkdir(dir, { recursive: true });
+            }
+
+            // Crear el archivo con la estructura inicial
+            const initialState = {
+                activePlaylist: {
+                    playlistName: null,
+                    playlistPath: null,
+                    lastLoaded: null,
+                    isActive: false,
+                    currentIndex: null,
+                    fileCount: null
+                }
+            };
+
+            await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(initialState, null, 2));
+            console.log('✅ Archivo systemState.json creado correctamente');
+            return true;
+        }
+
+        // Si el archivo existe, verificar que tenga la estructura correcta
+        const fileContent = await fsPromises.readFile(STATE_FILE_PATH, 'utf-8');
+        const jsonData = JSON.parse(fileContent);
+
+        if (!jsonData.activePlaylist) {
+            console.log('⚠️ Estructura de activePlaylist no encontrada. Inicializando...');
+            await initializeActivePlaylist();
+        }
+
+        return true;
+    } catch (error) {
+        console.error('❌ Error al verificar/crear el archivo de playlist activa:', error);
+        return false;
+    }
+}
+
 export {
     initializeActivePlaylist,
     activePlaylistIsValid,
     updateActivePlaylist,
     getActivePlaylist,
+    verifyActivePlaylistFile
 }; 

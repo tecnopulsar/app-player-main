@@ -1,12 +1,188 @@
+/** ✅
+ * @file playlistEndpoints.mjs
+ * @description Define las rutas para la gestión de playlists
+ * @module routes/playlistEndpoints
+ * 
+ * @requires express - Framework web para Node.js
+/*
+// Obtener todas las playlists
+GET /api/active-playlist/all
+
+// Eliminar todas excepto la activa
+DELETE /api/active-playlist/purge?keepActive=true
+
+// Eliminar absolutamente todas
+DELETE /api/active-playlist/purge
+*/
+
 import { Router } from 'express';
 import { getActivePlaylist, updateActivePlaylist } from '../utils/activePlaylist.mjs';
-import { getPlaylistDetails } from './vlcEndpoints.mjs';
 import { VLCPlayer } from '../lib/vlcPlayer.js';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import { getSystemState } from '../utils/systemState.mjs';
 import path from 'path';
 import { getConfig } from '../config/appConfig.mjs';
+
+// Crear el router
+const router = Router();
+
+/**
+ * @swagger
+ * /api/active-playlist/all:
+ *   get:
+ *     summary: Obtiene todas las playlists disponibles
+ *     responses:
+ *       200:
+ *         description: Lista de todas las playlists encontradas
+ *       500:
+ *         description: Error al buscar playlists
+ */
+router.get('/all', async (req, res) => {
+    try {
+        const config = getConfig();
+        const playlistsDir = config.paths.playlists;
+
+        // Leer el directorio de playlists
+        const playlistFolders = await fsPromises.readdir(playlistsDir, { withFileTypes: true });
+
+        // Filtrar solo directorios que contengan archivos .m3u
+        const playlists = await Promise.all(
+            playlistFolders
+                .filter(dirent => dirent.isDirectory())
+                .map(async dirent => {
+                    const playlistName = dirent.name;
+                    const playlistPath = path.join(playlistsDir, playlistName, `${playlistName}.m3u`);
+
+                    try {
+                        // Verificar que existe el archivo .m3u
+                        await fsPromises.access(playlistPath);
+
+                        // Contar archivos en la playlist
+                        const content = await fsPromises.readFile(playlistPath, 'utf8');
+                        const fileCount = content.split('\n')
+                            .filter(line => line.trim() && !line.startsWith('#'))
+                            .length;
+
+                        return {
+                            name: playlistName,
+                            path: playlistPath,
+                            fileCount,
+                            lastModified: (await fsPromises.stat(playlistPath)).mtime
+                        };
+                    } catch {
+                        return null; // Ignorar directorios sin archivo .m3u válido
+                    }
+                })
+        );
+
+        // Filtrar resultados nulos y ordenar por nombre
+        const validPlaylists = playlists.filter(p => p !== null)
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        res.json({
+            success: true,
+            playlists: validPlaylists,
+            count: validPlaylists.length
+        });
+    } catch (error) {
+        console.error('Error al obtener todas las playlists:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener las playlists',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * @swagger
+ * /api/active-playlist/purge:
+ *   delete:
+ *     summary: Elimina todas las playlists (excepto la activa si se especifica)
+ *     parameters:
+ *       - in: query
+ *         name: keepActive
+ *         schema:
+ *           type: boolean
+ *         description: Si se debe mantener la playlist activa actual
+ *     responses:
+ *       200:
+ *         description: Resultado de la operación de eliminación
+ *       500:
+ *         description: Error al eliminar playlists
+ */
+router.delete('/all', async (req, res) => {
+    try {
+        const { keepActive } = req.query;
+        const config = getConfig();
+        const playlistsDir = config.paths.playlists;
+
+        // Obtener playlist activa actual si keepActive es true
+        let activePlaylistPath = null;
+        if (keepActive === 'true') {
+            const activePlaylist = await getActivePlaylist();
+            activePlaylistPath = activePlaylist?.playlistPath;
+        }
+
+        // Leer todas las playlists
+        const playlistFolders = await fsPromises.readdir(playlistsDir, { withFileTypes: true });
+
+        // Procesar eliminación
+        const deletionResults = await Promise.all(
+            playlistFolders
+                .filter(dirent => dirent.isDirectory())
+                .map(async dirent => {
+                    const playlistName = dirent.name;
+                    const playlistPath = path.join(playlistsDir, playlistName, `${playlistName}.m3u`);
+
+                    // Verificar si debemos saltar la playlist activa
+                    if (activePlaylistPath && playlistPath === activePlaylistPath) {
+                        return { name: playlistName, status: 'kept', reason: 'active playlist' };
+                    }
+
+                    try {
+                        // Eliminar todo el directorio de la playlist
+                        await fsPromises.rm(path.join(playlistsDir, playlistName), {
+                            recursive: true,
+                            force: true
+                        });
+                        return { name: playlistName, status: 'deleted' };
+                    } catch (error) {
+                        return {
+                            name: playlistName,
+                            status: 'failed',
+                            reason: error.message
+                        };
+                    }
+                })
+        );
+
+        // Contar resultados
+        const deletedCount = deletionResults.filter(r => r.status === 'deleted').length;
+        const keptCount = deletionResults.filter(r => r.status === 'kept').length;
+        const failedCount = deletionResults.filter(r => r.status === 'failed').length;
+
+        res.json({
+            success: true,
+            message: `Eliminadas ${deletedCount} playlists (${keptCount} conservadas, ${failedCount} fallos)`,
+            results: deletionResults,
+            counts: {
+                deleted: deletedCount,
+                kept: keptCount,
+                failed: failedCount
+            }
+        });
+    } catch (error) {
+        console.error('Error al eliminar playlists:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al eliminar playlists',
+            error: error.message
+        });
+    }
+});
+
 
 // Función para obtener la ruta de una playlist por nombre
 async function getPlaylistPath(playlistName) {
@@ -34,7 +210,6 @@ try {
     global = { mainWindow: null, vlcPlayer: null };
 }
 
-const router = Router();
 let vlcInstance = null;
 
 /**

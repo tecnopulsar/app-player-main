@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { networkInfo } from '../servers/serverClient.mjs';
 import { exec } from 'child_process';
-import { renderTemplate } from '../utils/templateUtils.js';
+import { renderTemplate } from '../utils/templateUtils.mjs';
 
 const router = express.Router();
 
