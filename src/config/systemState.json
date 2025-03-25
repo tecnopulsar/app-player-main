@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-03-25T17:22:23.865Z",
+  "timestamp": "2025-03-25T17:22:53.863Z",
   "system": {
     "hostname": "base",
     "platform": "linux",
@@ -7,12 +7,12 @@
     "release": "6.12.18-v8+",
     "cpus": 4,
     "totalMem": 3923357696,
-    "freeMem": 1400782848,
-    "uptime": 416145.22,
+    "freeMem": 1381019648,
+    "uptime": 416175.22,
     "loadavg": [
-      1.89,
-      1.9,
-      2.25
+      1.54,
+      1.82,
+      2.21
     ],
     "network": {
       "lo": {
@@ -34,7 +34,7 @@
         "internal": false
       }
     },
-    "timestamp": "2025-03-25T17:22:23.817Z"
+    "timestamp": "2025-03-25T17:22:53.816Z"
   },
   "storage": {
     "playlistDirectory": "./public/videos",
@@ -45,9 +45,9 @@
       "fileCount": 0
     },
     "totalSpace": 61641601024,
-    "freeSpace": 42290094080,
-    "usedSpace": 19351506944,
-    "timestamp": "2025-03-25T17:22:23.840Z"
+    "freeSpace": 42289987584,
+    "usedSpace": 19351613440,
+    "timestamp": "2025-03-25T17:22:53.838Z"
   },
   "vlc": {
     "connected": true,
@@ -77,7 +77,7 @@
       "port": 8080
     },
     "version": "1.0.0",
-    "startTime": "2025-03-25T17:22:23.865Z",
+    "startTime": "2025-03-25T17:22:53.863Z",
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
