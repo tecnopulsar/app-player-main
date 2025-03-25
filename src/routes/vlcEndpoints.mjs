@@ -27,25 +27,14 @@ export const setControllerClient = (client) => {
  */
 router.get('/status', async (req, res) => {
     try {
-        const statusXml = await vlcRequest(vlcCommands.getStatus);
-        const parsedXml = await parseStringPromise(statusXml);
-        const { state, currentplid, fullscreen, volume, length, position } = parsedXml.root;
 
-        res.json({
-            state: state?.[0] || 'stopped',
-            currentplid: currentplid?.[0] || '0',
-            fullscreen: fullscreen?.[0] === '1',
-            volume: volume?.[0] || '0',
-            length: length?.[0] || '0',
-            position: position?.[0] || '0',
-        });
+        // 1. Obtener estado desde VLC
+        const statusJSON = await vlcRequest(vlcCommands.getStatus);
+        res.json(statusJSON);
+
     } catch (error) {
-        console.error(`Error fetching status: ${error.message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Error al obtener el estado del reproductor',
-            error: error.message
-        });
+        const errorMessage = `Error fetching VLC status: ${error.message}`;
+        console.error(errorMessage);
     }
 });
 

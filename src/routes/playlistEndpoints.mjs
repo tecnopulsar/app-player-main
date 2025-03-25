@@ -13,6 +13,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { getConfig } from '../config/appConfig.mjs';
+import { vlcRequest } from '../services/vlcService.mjs';
 
 // Crear el router
 const router = Router();
@@ -173,18 +174,62 @@ router.delete('/all', async (req, res) => {
     }
 });
 
-// Acceso seguro a global
-let global;
-try {
-    // En un entorno ESM, no podemos usar require directamente
-    const electron = await import('electron');
-    global = electron.default;
-} catch (e) {
-    console.log('ℹ️ Módulo Electron no disponible en este contexto. Esto es normal en un entorno de servidor.');
-    global = { mainWindow: null, vlcPlayer: null };
-}
 
-let vlcInstance = null;
+/**
+ * @swagger
+ * /api/playlist/delete/{playlistName}:
+ *   delete:
+ *     summary: Elimina una playlist específica según el nombre proporcionado en la URL
+ *     parameters:
+ *       - in: path
+ *         name: playlistName
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Nombre de la playlist a eliminar
+ *     responses:
+ *       200:
+ *         description: Playlist eliminada con éxito
+ *       400:
+ *         description: No se puede eliminar la playlist activa
+ *       404:
+ *         description: Playlist no encontrada
+ *       500:
+ *         description: Error interno al eliminar la playlist
+ */
+router.delete('/:playlistName', async (req, res) => {
+    try {
+        const { playlistName } = req.params;
+
+        if (!playlistName) {
+            return res.status(400).json({ success: false, message: 'Se requiere el nombre de la playlist en la URL' });
+        }
+
+        const config = getConfig();
+        const playlistDir = path.join(config.paths.playlists, playlistName);
+
+        // Verificar si la carpeta de la playlist existe
+        try {
+            await fsPromises.access(playlistDir);
+        } catch {
+            return res.status(404).json({ success: false, message: `Playlist '${playlistName}' no encontrada` });
+        }
+
+        // Verificar si es la playlist activa
+        const activePlaylist = await getActivePlaylist();
+        if (activePlaylist?.playlistName === playlistName) {
+            return res.status(400).json({ success: false, message: 'No se puede eliminar la playlist activa' });
+        }
+
+        // Eliminar la carpeta de la playlist
+        await fsPromises.rm(playlistDir, { recursive: true, force: true });
+
+        res.json({ success: true, message: `Playlist '${playlistName}' eliminada correctamente` });
+    } catch (error) {
+        console.error(`❌ Error al eliminar playlist: ${error.message}`);
+        res.status(500).json({ success: false, message: 'Error al eliminar la playlist', error: error.message });
+    }
+});
 
 /**
  * @swagger
@@ -192,7 +237,7 @@ let vlcInstance = null;
  *   get:
  *     summary: Obtiene la información de la playlist actualmente activa
  */
-router.get('/', async (req, res) => {
+router.get('/active', async (req, res) => {
     try {
         const activePlaylist = await getActivePlaylist();
         res.json({
@@ -214,104 +259,85 @@ router.get('/', async (req, res) => {
  * /api/active-playlist:
  *   post:
  *     summary: Actualiza la playlist activa
- *     parameters:
- *       - name: playlistName
- *         in: body
- *         required: true
- *         type: string
- *         description: Nombre de la playlist a establecer como activa
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               playlistName:
+ *                 type: string
+ *                 description: Nombre de la playlist a establecer como activa
+ *               default:
+ *                 type: boolean
+ *                 description: Indica si la playlist debe marcarse como la predeterminada
+ *     responses:
+ *       200:
+ *         description: Playlist activa actualizada con éxito
+ *       400:
+ *         description: Datos inválidos o playlist no encontrada
+ *       500:
+ *         description: Error al actualizar la playlist activa
  */
-router.post('/', async (req, res) => {
-    console.log('📝 POST /api/active-playlist - Estableciendo playlist activa:', req.body);
+router.post('/active', async (req, res) => {
+    console.log('📝 POST /api/playlist/active - Actualizando playlist activa:', req.body);
     try {
-        // Validación básica
-        const { playlistName } = req.body;
+        const { playlistName, default: setAsDefault } = req.body;
 
         if (!playlistName) {
-            return res.status(400).json({
-                success: false,
-                message: 'Se requiere el nombre de la playlist'
-            });
+            return res.status(400).json({ success: false, message: 'Se requiere el nombre de la playlist' });
         }
 
-        // Obtener los datos de la playlist desde el sistema de archivos
         const playlistPath = await getPlaylistPath(playlistName);
-
         if (!playlistPath) {
-            return res.status(404).json({
-                success: false,
-                message: `Playlist '${playlistName}' no encontrada en el sistema`
-            });
+            return res.status(404).json({ success: false, message: `Playlist '${playlistName}' no encontrada` });
         }
 
         // Contar archivos en la playlist
         let fileCount = 0;
         try {
+            const playlistPath = await getPlaylistPath(playlistName);
             const playlistContent = await fsPromises.readFile(playlistPath, 'utf8');
-            // Contar líneas que no sean comentarios o vacías
-            fileCount = playlistContent.split('\n')
-                .filter(line => line.trim() && !line.startsWith('#'))
-                .length;
+            fileCount = playlistContent.split('\n').filter(line => line.trim() && !line.startsWith('#')).length;
         } catch (err) {
-            console.error(`Error al leer el contenido de la playlist: ${err.message}`);
+            console.error(`❌ Error al leer la playlist: ${err.message}`);
         }
 
-        // Actualizar la playlist activa con todos los datos necesarios
+        // Actualizar la playlist activa en systemState.json
         const updatedActivePlaylist = await updateActivePlaylist({
             playlistName,
             playlistPath,
             fileCount,
+            isDefault: setAsDefault || false, // Si no se pasa, por defecto es false
         });
 
         if (!updatedActivePlaylist) {
-            return res.status(500).json({
-                success: false,
-                message: 'Error al actualizar la playlist activa'
-            });
+            return res.status(500).json({ success: false, message: 'Error al actualizar la playlist activa' });
         }
 
         // Intentar cargar la playlist en VLC
-        let vlcRestarted = false;
         let vlcPlaylistLoaded = false;
-
         try {
             const vlc = VLCPlayer.getInstance();
-            // Primero vaciar la playlist actual
-            await vlcRequest('pl_empty');
-            // Cargar la nueva playlist usando in_play con la playlistPath
-            await vlcRequest('in_play', {
-                input: playlistPath  // Asegúrate de que playlistPath es la ruta correcta
-            });
+            await vlcRequest('pl_empty'); // Vaciar la playlist actual
+            await vlcRequest('in_play', { input: playlistPath }); // Cargar la nueva playlist
 
-            // Opcional: Esperar un breve momento para que VLC procese la playlist
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // Verificar si la playlist se cargó correctamente
+            // Verificar si VLC la ha cargado correctamente
             const status = await vlcRequest('status');
-            vlcPlaylistLoaded = status && status.information && status.information.category;
-            if (!vlcPlaylistLoaded) {
-                // Intentar con reinicio si falla la primera vez
-                await VLCPlayer.restart();
-                vlcRestarted = true;
-                await vlcRequest('in_play', {
-                    input: playlistPath
-                });
-                // Verificar nuevamente
-                const newStatus = await vlcRequest('status');
-                vlcPlaylistLoaded = newStatus && newStatus.information && newStatus.information.category;
-            }
+            vlcPlaylistLoaded = status?.information?.category ? true : false;
         } catch (error) {
             console.error(`🛑 Error al cargar la playlist en VLC: ${error.message}`);
         }
 
         res.json({
             success: true,
-            message: `Playlist '${playlistName}' establecida como activa${vlcPlaylistLoaded ? ' y cargada en VLC' : ''}${vlcRestarted ? ' (con reinicio)' : ''}`,
+            message: `Playlist '${playlistName}' establecida como activa${vlcPlaylistLoaded ? ' y cargada en VLC' : ''}`,
             activePlaylist: updatedActivePlaylist,
-            vlcStatus: {
-                loaded: vlcPlaylistLoaded,
-                restarted: vlcRestarted
-            }
+            vlcStatus: { loaded: vlcPlaylistLoaded }
         });
+
+
     } catch (error) {
         console.error('❌ Error al establecer playlist activa:', error);
         res.status(500).json({
@@ -320,5 +346,6 @@ router.post('/', async (req, res) => {
         });
     }
 });
+
 
 export default router; 

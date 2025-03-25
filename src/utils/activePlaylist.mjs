@@ -3,6 +3,7 @@
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
+import { getConfig } from '../config/appConfig.mjs';
 
 // Ruta del archivo de playlist activa
 export const STATE_FILE_PATH = path.join(process.cwd(), 'src/config/systemState.json');

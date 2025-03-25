@@ -8,10 +8,7 @@ import { VLCPlayer } from './src/lib/vlcPlayer.js';
 import { appConfig } from './src/config/appConfig.mjs';
 import { initializeServer, stopServer } from './src/servers/serverClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
-import ControllerClient from './src/clients/controllerClient.mjs';
-import { getVLCStatus } from './src/utils/vlcStatus.js';
 import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.mjs';
-import { setControllerClient } from './src/routes/vlcEndpoints.mjs';
 import { startSystemStateMonitor } from './src/utils/systemState.mjs';
 import { getActivePlaylist, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
 // Deshabilitar la aceleración por hardware
@@ -28,7 +25,6 @@ const windowManager = new WindowManager();
 // Mantener una referencia global del objeto window
 let mainWindow;
 let vlcPlayer;
-let controllerClient;
 
 // Hacer la ventana global para poder acceder a ella desde el controllerClient
 global.mainWindow = null;
@@ -63,18 +59,6 @@ async function createWindow() {
       console.warn('⚠️ No se pudo verificar el archivo de playlist activa:', error);
       console.log('ℹ️ Continuando sin cargar playlist ni iniciar VLC...');
     }
-
-    // Inicializar el cliente de controlador
-    console.log('\n=== Iniciando Cliente de Controlador ===');
-    // Obtener URLs desde la configuración
-    const controllerUrl = appConfig.controller?.url || 'http://localhost:3001';
-    const monitorUrl = appConfig.monitor?.url || 'http://localhost:3002';
-    controllerClient = new ControllerClient(controllerUrl, monitorUrl);
-    controllerClient.connect();
-
-    // Configurar el cliente controlador para los endpoints de VLC
-    setControllerClient(controllerClient);
-    console.log('=====================================\n');
 
     mainWindow = new BrowserWindow({
       width: 1200,
@@ -141,34 +125,6 @@ async function createWindow() {
       sendLog('VLC no iniciado - No hay playlist configurada', 'warning');
     }
 
-    // Iniciar un intervalo para actualizar el estado de VLC en el frontend
-    const updateVLCStatusInterval = setInterval(async () => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        try {
-          // Si VLC no está inicializado, proporcionar un estado predeterminado
-          const vlcStatus = vlcPlayer ? await getVLCStatus() : {
-            status: 'stopped',
-            message: 'No hay playlist configurada',
-            playing: false,
-            position: 0,
-            length: 0
-          };
-
-          const playlistInfo = activePlaylist || {
-            playlistName: null,
-            playlistPath: null,
-            lastLoaded: null,
-            message: 'No hay playlist configurada'
-          };
-
-          mainWindow.webContents.send('vlc-status-update', { vlcStatus, playlistInfo });
-        } catch (error) {
-          console.error('Error al actualizar estado de VLC:', error);
-        }
-      } else {
-        clearInterval(updateVLCStatusInterval);
-      }
-    }, 5000); // Actualizar cada 5 segundos
   } catch (error) {
     console.error('Error en la inicialización:', error);
     if (mainWindow) {
@@ -191,10 +147,6 @@ app.on('window-all-closed', () => {
   console.log('Deteniendo servidor web...');
   stopServer();
 
-  // Desconectar el cliente de controlador
-  if (controllerClient) {
-    controllerClient.disconnect();
-  }
 
   if (vlcPlayer) {
     vlcPlayer.stop();
