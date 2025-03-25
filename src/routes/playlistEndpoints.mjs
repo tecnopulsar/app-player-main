@@ -4,23 +4,13 @@
  * @module routes/playlistEndpoints
  * 
  * @requires express - Framework web para Node.js
-/*
-// Obtener todas las playlists
-GET /api/active-playlist/all
-
-// Eliminar todas excepto la activa
-DELETE /api/active-playlist/purge?keepActive=true
-
-// Eliminar absolutamente todas
-DELETE /api/active-playlist/purge
 */
 
 import { Router } from 'express';
-import { getActivePlaylist, updateActivePlaylist } from '../utils/activePlaylist.mjs';
+import { getPlaylistPath, getActivePlaylist, updateActivePlaylist } from '../utils/activePlaylist.mjs';
 import { VLCPlayer } from '../lib/vlcPlayer.js';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
-import { getSystemState } from '../utils/systemState.mjs';
 import path from 'path';
 import { getConfig } from '../config/appConfig.mjs';
 
@@ -183,22 +173,6 @@ router.delete('/all', async (req, res) => {
     }
 });
 
-
-// Función para obtener la ruta de una playlist por nombre
-async function getPlaylistPath(playlistName) {
-    if (!playlistName) return null;
-
-    const config = getConfig();
-    const playlistsDir = config.paths.playlists;
-    const playlistPath = path.join(playlistsDir, playlistName, `${playlistName}.m3u`);
-
-    if (fs.existsSync(playlistPath)) {
-        return playlistPath;
-    }
-
-    return null;
-}
-
 // Acceso seguro a global
 let global;
 try {
@@ -263,7 +237,7 @@ router.post('/', async (req, res) => {
         // Obtener los datos de la playlist desde el sistema de archivos
         const playlistPath = await getPlaylistPath(playlistName);
 
-        if (!playlistPath || !fs.existsSync(playlistPath)) {
+        if (!playlistPath) {
             return res.status(404).json({
                 success: false,
                 message: `Playlist '${playlistName}' no encontrada en el sistema`
@@ -282,61 +256,18 @@ router.post('/', async (req, res) => {
             console.error(`Error al leer el contenido de la playlist: ${err.message}`);
         }
 
-        // Obtener datos actuales de la playlist activa si existe
-        let currentActivePlaylist = {
-            playlistName: null,
-            playlistPath: null,
-            currentIndex: 0,
-            fileCount: 0,
-            isDefault: false,
-            lastLoaded: null
-        };
-
-        try {
-            // Primero verificamos si hay una playlist activa en el estado
-            const systemState = await getSystemState();
-            if (systemState && systemState.activePlaylist) {
-                currentActivePlaylist = systemState.activePlaylist;
-            }
-        } catch (err) {
-            console.error(`Error al obtener la playlist activa actual: ${err.message}`);
-        }
-
         // Actualizar la playlist activa con todos los datos necesarios
-        await updateActivePlaylist({
+        const updatedActivePlaylist = await updateActivePlaylist({
             playlistName,
             playlistPath,
-            // Mantener el índice actual si estamos actualizando la misma playlist
-            currentIndex: playlistName === currentActivePlaylist.playlistName ?
-                currentActivePlaylist.currentIndex : 0,
             fileCount,
-            // Por defecto no es la playlist por defecto a menos que se indique lo contrario
-            isDefault: req.body.isDefault !== undefined ?
-                req.body.isDefault : currentActivePlaylist.isDefault,
-            // Actualizar timestamp
-            lastLoaded: new Date().toISOString()
         });
 
-        // Verificar que la información se guardó correctamente en systemState
-        try {
-            const { getSystemState } = await import('../utils/systemState.mjs');
-            const systemState = await getSystemState();
-
-            if (systemState && systemState.activePlaylist) {
-                // Verificar que playlistPath se guardó correctamente
-                if (!systemState.activePlaylist.playlistPath && playlistPath) {
-                    console.warn(`⚠️ playlistPath no se guardó correctamente en systemState. Forzando actualización...`);
-
-                    // Forzar actualización explícita del estado
-                    const { saveSystemState } = await import('../utils/systemState.mjs');
-                    systemState.activePlaylist.playlistPath = playlistPath;
-                    await saveSystemState(systemState);
-
-                    console.log(`✅ Actualización forzada de playlistPath: ${playlistPath}`);
-                }
-            }
-        } catch (err) {
-            console.error(`❌ Error al verificar systemState después de actualizar: ${err.message}`);
+        if (!updatedActivePlaylist) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error al actualizar la playlist activa'
+            });
         }
 
         // Intentar cargar la playlist en VLC
@@ -345,27 +276,32 @@ router.post('/', async (req, res) => {
 
         try {
             const vlc = VLCPlayer.getInstance();
-            // Primer intento - carga normal
-            vlcPlaylistLoaded = await vlc.loadPlaylist(playlistPath, false);
+            // Primero vaciar la playlist actual
+            await vlcRequest('pl_empty');
+            // Cargar la nueva playlist usando in_play con la playlistPath
+            await vlcRequest('in_play', {
+                input: playlistPath  // Asegúrate de que playlistPath es la ruta correcta
+            });
 
-            // Si falló, intentar con reinicio forzado
+            // Opcional: Esperar un breve momento para que VLC procese la playlist
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Verificar si la playlist se cargó correctamente
+            const status = await vlcRequest('status');
+            vlcPlaylistLoaded = status && status.information && status.information.category;
             if (!vlcPlaylistLoaded) {
-                console.log('🔄 El primer intento de carga falló, intentando con reinicio forzado...');
+                // Intentar con reinicio si falla la primera vez
+                await VLCPlayer.restart();
                 vlcRestarted = true;
-                vlcPlaylistLoaded = await vlc.loadPlaylist(playlistPath, true);
-            }
-
-            if (vlcPlaylistLoaded) {
-                console.log(`✅ Playlist '${playlistName}' cargada exitosamente en VLC`);
-            } else {
-                console.error(`❌ No se pudo cargar la playlist '${playlistName}' en VLC después de múltiples intentos`);
+                await vlcRequest('in_play', {
+                    input: playlistPath
+                });
+                // Verificar nuevamente
+                const newStatus = await vlcRequest('status');
+                vlcPlaylistLoaded = newStatus && newStatus.information && newStatus.information.category;
             }
         } catch (error) {
             console.error(`🛑 Error al cargar la playlist en VLC: ${error.message}`);
         }
-
-        // Obtener los datos actualizados para la respuesta
-        const updatedActivePlaylist = await getActivePlaylist();
 
         res.json({
             success: true,

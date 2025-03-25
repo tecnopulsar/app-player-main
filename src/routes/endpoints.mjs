@@ -19,9 +19,9 @@ router.use((req, res, next) => {
     next();
 });
 
-// Ruta principal
-router.get('/', async (req, res) => {
-    console.log('Accediendo a la ruta principal');
+// Cambiar la ruta principal '/' a '/dashboard' para evitar conflictos
+router.get('/dashboard', async (req, res) => {
+    console.log('Accediendo a la ruta del dashboard');
     try {
         const templateData = {
             port: appConfig.server.port,
@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
         const html = await renderTemplate(path.join(viewsDir, 'index.html'), templateData);
         res.send(html);
     } catch (error) {
-        console.error('Error al servir la página principal:', error);
+        console.error('Error al servir la página de dashboard:', error);
         res.status(500).json({
             error: 'Error al cargar la página',
             details: error.message,

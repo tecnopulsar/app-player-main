@@ -5,14 +5,14 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 
 // Ruta del archivo de playlist activa
-const STATE_FILE_PATH = path.join(process.cwd(), 'src/config/systemState.json');
+export const STATE_FILE_PATH = path.join(process.cwd(), 'src/config/systemState.json');
 
 /** ✅
  * Inicializa las propiedades de activePlaylist dentro de systemState.json
  * sin eliminar otras configuraciones.
  * @returns {Promise<boolean>} true si se actualizó correctamente
  */
-async function initializeActivePlaylist() {
+export async function initializeActivePlaylist() {
     try {
         if (!fs.existsSync(STATE_FILE_PATH)) {
             console.error('❌ El archivo systemState.json no existe. No se puede inicializar la playlist.');
@@ -53,7 +53,7 @@ async function initializeActivePlaylist() {
  * y si contiene una playlist activa con valores válidos.
  * @returns {Promise<boolean>} true si el archivo y la playlist activa son válidos.
  */
-async function activePlaylistIsValid() {
+export async function activePlaylistIsValid() {
     try {
         if (!fs.existsSync(STATE_FILE_PATH)) {
             console.error('❌ El archivo systemState.json no existe.');
@@ -82,9 +82,9 @@ async function activePlaylistIsValid() {
 /** ✅ 
  * Actualiza la información de la playlist activa
  * @param {Object} data - Datos de la playlist activa
- * @returns {Promise<Object>} La playlist actualizada
+ * @returns {Promise<Object>} La playlist actualizada o null si hay un error
  */
-async function updateActivePlaylist(data) {
+export async function updateActivePlaylist(data) {
     try {
         // 1. Leer el archivo systemState.json
         const fileContent = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
@@ -100,7 +100,7 @@ async function updateActivePlaylist(data) {
             lastLoaded: data.lastLoaded || new Date().toISOString(), // Usar la fecha proporcionada o la actual
             isActive: true, // Forzar a que la playlist esté activa
             currentIndex: data.currentIndex || 1, // Usar el índice proporcionado o 1 por defecto
-            fileCount: data.fileCount || 0 // Usar el conteo de archivos proporcionado o 0 por defecto
+            fileCount: data.fileCount || 1 // Usar el conteo de archivos proporcionado o 0 por defecto
         };
 
         // 4. Actualizar solo la propiedad activePlaylist en el estado del sistema
@@ -109,8 +109,12 @@ async function updateActivePlaylist(data) {
         // 5. Guardar el archivo actualizado
         await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(systemState, null, 2));
         console.log(`✅ Playlist activa actualizada: ${updatedPlaylist.playlistName}`);
+
+        return updatedPlaylist;
+
     } catch (error) {
         console.error('❌ Error al actualizar la playlist activa:', error);
+        return null;
     }
 }
 
@@ -118,7 +122,7 @@ async function updateActivePlaylist(data) {
  * Obtiene la información de la playlist activa desde systemState.json.
  * @returns {Promise<Object|null>} Retorna la playlist activa o null si no existe.
  */
-async function getActivePlaylist() {
+export async function getActivePlaylist() {
     try {
         if (!fs.existsSync(STATE_FILE_PATH)) {
             console.error('❌ El archivo systemState.json no existe.');
@@ -146,7 +150,7 @@ async function getActivePlaylist() {
  * Verifica que el archivo de playlist activa exista y lo inicializa si es necesario
  * @returns {Promise<boolean>} true si el archivo existe o se creó correctamente
  */
-async function verifyActivePlaylistFile() {
+export async function verifyActivePlaylistFile() {
     try {
         // Verificar si el archivo existe
         if (!fs.existsSync(STATE_FILE_PATH)) {
@@ -191,10 +195,17 @@ async function verifyActivePlaylistFile() {
     }
 }
 
-export {
-    initializeActivePlaylist,
-    activePlaylistIsValid,
-    updateActivePlaylist,
-    getActivePlaylist,
-    verifyActivePlaylistFile
-}; 
+// AUXILIAR - Función para obtener la ruta de una playlist por nombre sino null
+export async function getPlaylistPath(playlistName) {
+    if (!playlistName) return null;
+
+    const config = getConfig();
+    const playlistsDir = config.paths.playlists;
+    const playlistPath = path.join(playlistsDir, playlistName, `${playlistName}.m3u`);
+
+    if (fs.existsSync(playlistPath)) {
+        return playlistPath;
+    }
+
+    return null;
+}

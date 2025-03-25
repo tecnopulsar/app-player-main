@@ -148,47 +148,6 @@ export class VLCPlayer {
                 throw new Error('No se encontró la playlist o los videos referenciados');
             }
 
-            // Verificar el formato de la playlist para asegurar que solo contiene nombres de archivo
-            try {
-                const content = await fsPromises.readFile(this.playlistPath, 'utf8');
-                const lines = content.split('\n');
-                const videoEntries = lines.filter(line => line.trim() && !line.startsWith('#'));
-                const playlistDir = path.dirname(this.playlistPath);
-
-                // Comprobar si hay rutas en lugar de nombres de archivo
-                const needsUpdate = videoEntries.some(entry => {
-                    const fileName = path.basename(entry.trim());
-                    return entry.trim() !== fileName;
-                });
-
-                // Si se necesita actualizar, reescribir la playlist con solo nombres de archivo
-                if (needsUpdate) {
-                    console.log(`⚠️ Corrigiendo playlist ${this.playlistPath} para usar solo nombres de archivo`);
-                    const updatedContent = '#EXTM3U\n' + videoEntries
-                        .map(entry => path.basename(entry.trim()))
-                        .join('\n');
-
-                    await fsPromises.writeFile(this.playlistPath, updatedContent);
-                    console.log('✅ Playlist corregida correctamente');
-                }
-
-                // Verificar que los archivos de video existan
-                for (const entry of videoEntries) {
-                    const fileName = path.basename(entry.trim());
-                    const videoPath = path.join(playlistDir, fileName);
-
-                    try {
-                        await fsPromises.access(videoPath);
-                    } catch (error) {
-                        console.error(`❌ No se puede acceder al video: ${videoPath}`);
-                        throw new Error(`No se puede acceder al video: ${fileName}`);
-                    }
-                }
-            } catch (error) {
-                console.error('Error al verificar la playlist:', error);
-                throw error;
-            }
-
             const options = [
                 '--vout=gles2',
                 '--loop',                     // Reproducción en bucle

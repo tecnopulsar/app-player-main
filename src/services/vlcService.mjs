@@ -5,6 +5,7 @@ const VLC_PORT = 8080;
 const VLC_USERNAME = '';
 const VLC_PASSWORD = 'tecno';
 
+
 // Configuración global de axios para VLC
 const vlcAxios = axios.create({
     baseURL: `http://${VLC_HOST}:${VLC_PORT}/requests/status.json`,
@@ -16,9 +17,10 @@ const vlcAxios = axios.create({
 });
 
 // Función optimizada para hacer peticiones a VLC
-export const vlcRequest = async (command) => {
+export const vlcRequest = async (command, options = {}) => {
     try {
-        const response = await vlcAxios.get('', { params: { command } });
+        const params = { command, ...options };
+        const response = await vlcAxios.get('', { params});
         return response.data;
     } catch (error) {
         console.error('Error en la petición VLC:', error);
@@ -28,11 +30,19 @@ export const vlcRequest = async (command) => {
 
 // Comandos comunes para VLC
 export const vlcCommands = {
+    // Control básico de reproducción
     play: 'pl_play',
     pause: 'pl_pause',
     stop: 'pl_stop',
     next: 'pl_next',
     previous: 'pl_previous',
+
+    // Control de playlist
+    loadPlaylist: 'in_play',         // Comando para cargar nueva playlist
+    emptyPlaylist: 'pl_empty',       // Vaciar playlist actual
+    addToPlaylist: 'in_enqueue',     // Añadir elemento a playlist actual
+    playItem: 'pl_play',             // Reproducir elemento específico (con parámetro id)
+
     fullscreen: 'fullscreen',
     toggleAudio: 'volume',
     getStatus: 'status',
