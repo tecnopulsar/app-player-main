@@ -7,7 +7,7 @@
 */
 
 import { Router } from 'express';
-import { getPlaylistPath, getActivePlaylist, updateActivePlaylist } from '../utils/activePlaylist.mjs';
+import { getPlaylistPath, getActivePlaylist, updateActivePlaylist, getDefaultPlaylist, updateDefaultPlaylist } from '../utils/activePlaylist.mjs';
 import { VLCPlayer } from '../lib/vlcPlayer.js';
 import fs from 'fs';
 import fsPromises from 'fs/promises';
@@ -222,7 +222,7 @@ router.delete('/:playlistName', async (req, res) => {
         }
 
         // Verificar si es la playlist por defecto
-        const defaultPlaylist = getDefaultPlaylist(); // Asegúrate de tener una función que obtenga la defaultPlaylist
+        const defaultPlaylist = await getDefaultPlaylist();
         if (defaultPlaylist?.playlistName === playlistName) {
             return res.status(400).json({ success: false, message: 'No se puede eliminar la playlist por defecto' });
         }
@@ -322,6 +322,19 @@ router.post('/active', async (req, res) => {
             return res.status(500).json({ success: false, message: 'Error al actualizar la playlist activa' });
         }
 
+        // Si se marca como default, actualizar también la propiedad defaultPlaylist
+        let updatedDefaultPlaylist = null;
+        if (setAsDefault) {
+            updatedDefaultPlaylist = await updateDefaultPlaylist({
+                playlistName,
+                playlistPath
+            });
+
+            if (!updatedDefaultPlaylist) {
+                console.warn('⚠️ No se pudo actualizar la playlist por defecto');
+            }
+        }
+
         // Intentar cargar la playlist en VLC
         let vlcPlaylistLoaded = false;
         try {
@@ -338,8 +351,9 @@ router.post('/active', async (req, res) => {
 
         res.json({
             success: true,
-            message: `Playlist '${playlistName}' establecida como activa${vlcPlaylistLoaded ? ' y cargada en VLC' : ''}`,
+            message: `Playlist '${playlistName}' establecida como activa${vlcPlaylistLoaded ? ' y cargada en VLC' : ''}${setAsDefault ? ' y establecida como predeterminada' : ''}`,
             activePlaylist: updatedActivePlaylist,
+            defaultPlaylist: updatedDefaultPlaylist,
             vlcStatus: { loaded: vlcPlaylistLoaded }
         });
 

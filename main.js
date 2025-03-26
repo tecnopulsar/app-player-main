@@ -9,7 +9,6 @@ import { appConfig } from './src/config/appConfig.mjs';
 import { initializeServer, stopServer } from './src/servers/serverClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
 import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.mjs';
-import { startSystemStateMonitor } from './src/utils/systemState.mjs';
 import { getActivePlaylist, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
 // Deshabilitar la aceleración por hardware
 console.log('🔄 Deshabilitando la aceleración por hardware...');
@@ -74,12 +73,6 @@ async function createWindow() {
 
     // Inicializar el sistema de logs
     initLogs(mainWindow);
-
-    // Iniciar el monitor de estado del sistema con un retraso para dar tiempo a que VLC esté preparado
-    setTimeout(() => {
-      stateMonitor = startSystemStateMonitor(30000);
-      console.log('Monitor de estado del sistema iniciado');
-    }, 5000); // Esperar 5 segundos después de iniciar VLC antes de empezar a monitorear
 
     // Solo iniciar VLC si hay una playlist válida configurada
     if (playlistIsValid) {

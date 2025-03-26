@@ -1,0 +1,101 @@
+{
+    "timestamp": "2025-03-26T11:51:04.204Z",
+    "system": {
+      "hostname": "base",
+      "platform": "linux",
+      "arch": "arm64",
+      "release": "6.12.18-v8+",
+      "cpus": 4,
+      "totalMem": 3923357696,
+      "freeMem": 1444794368,
+      "uptime": 482665.49,
+      "loadavg": [
+        1.66,
+        1.52,
+        1.82
+      ],
+      "network": {
+        "lo": {
+          "address": "127.0.0.1",
+          "netmask": "255.0.0.0",
+          "mac": "00:00:00:00:00:00",
+          "internal": true
+        },
+        "eth0": {
+          "address": "192.168.1.200",
+          "netmask": "255.255.255.0",
+          "mac": "d8:3a:dd:0b:20:e8",
+          "internal": false
+        },
+        "wlan0": {
+          "address": "192.168.1.84",
+          "netmask": "255.255.255.0",
+          "mac": "d8:3a:dd:0b:20:e9",
+          "internal": false
+        }
+      },
+      "timestamp": "2025-03-26T11:51:04.095Z"
+    },
+    "storage": {
+      "playlistDirectory": "./public/videos",
+      "videosStats": {
+        "exists": true,
+        "isDirectory": true,
+        "size": 0,
+        "fileCount": 0
+      },
+      "totalSpace": 61641601024,
+      "freeSpace": 42221015040,
+      "usedSpace": 19420585984,
+      "timestamp": "2025-03-26T11:51:04.151Z"
+    },
+    "vlc": {
+      "connected": true,
+      "playing": true,
+      "paused": false,
+      "stopped": false,
+      "currentItem": "ForBiggerJoyrides.mp4",
+      "position": 0.093118511140347,
+      "time": 1,
+      "length": 15,
+      "volume": 0,
+      "random": false,
+      "repeat": false,
+      "fullscreen": false
+    },
+    "app": {
+      "deviceId": "9c30157f",
+      "deviceName": "base",
+      "deviceType": "player",
+      "deviceGroup": "default",
+      "server": {
+        "port": 3000,
+        "host": "0.0.0.0"
+      },
+      "vlcConfig": {
+        "host": "localhost",
+        "port": 8080
+      },
+      "version": "1.0.0",
+      "startTime": "2025-03-26T11:51:04.203Z",
+      "nodeVersion": "v22.14.0"
+    },
+    "activePlaylist": {
+      "playlistName": "wetechar",
+      "playlistPath": "public/videos/wetechar/wetechar.m3u",
+      "lastLoaded": "2025-03-26T12:08:42.025Z",
+      "isActive": true,
+      "currentIndex": 1,
+      "fileCount": 1,
+      "isDefault": true,
+      "defaultPlaylistData": {
+        "description": "Playlist por defecto",
+        "createdDate": "2025-03-26T11:29:00.000Z",
+        "creator": "Sistema"
+      }
+    },
+    "defaultPlaylist": {
+      "playlistName": "wetechar",
+      "playlistPath": "public/videos/wetechar/wetechar.m3u"
+    }
+  }

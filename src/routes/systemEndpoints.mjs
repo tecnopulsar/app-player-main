@@ -4,10 +4,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import {
-    getSystemInfo,
     getSystemState,
     saveSystemState,
-    loadSystemState
 } from '../utils/systemState.mjs';
 import { appConfig } from '../config/appConfig.mjs';
 

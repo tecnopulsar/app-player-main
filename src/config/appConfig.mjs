@@ -57,6 +57,15 @@ const appConfig = {
             '--no-sub-autodetect-file'
         ]
     },
+    // Configuración de Redis
+    redis: {
+        host: '127.0.0.1',
+        port: 6379,
+        db: 0,
+        keyPrefix: 'player:',
+        retryInterval: 1000, // ms
+        maxRetries: 10
+    },
     // Configuración de videos
     videos: {
         directory: './public/videos',

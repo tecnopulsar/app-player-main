@@ -172,6 +172,10 @@ export async function verifyActivePlaylistFile() {
                     isActive: false,
                     currentIndex: null,
                     fileCount: null
+                },
+                defaultPlaylist: {
+                    playlistName: null,
+                    playlistPath: null
                 }
             };
 
@@ -184,9 +188,36 @@ export async function verifyActivePlaylistFile() {
         const fileContent = await fsPromises.readFile(STATE_FILE_PATH, 'utf-8');
         const jsonData = JSON.parse(fileContent);
 
+        let needsUpdate = false;
+
+        // Verificar que exista la propiedad activePlaylist
         if (!jsonData.activePlaylist) {
             console.log('⚠️ Estructura de activePlaylist no encontrada. Inicializando...');
-            await initializeActivePlaylist();
+            jsonData.activePlaylist = {
+                playlistName: null,
+                playlistPath: null,
+                lastLoaded: null,
+                isActive: false,
+                currentIndex: null,
+                fileCount: null
+            };
+            needsUpdate = true;
+        }
+
+        // Verificar que exista la propiedad defaultPlaylist
+        if (!jsonData.defaultPlaylist) {
+            console.log('⚠️ Estructura de defaultPlaylist no encontrada. Inicializando...');
+            jsonData.defaultPlaylist = {
+                playlistName: null,
+                playlistPath: null
+            };
+            needsUpdate = true;
+        }
+
+        // Guardar el archivo si se realizaron cambios
+        if (needsUpdate) {
+            await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(jsonData, null, 2));
+            console.log('✅ Archivo systemState.json actualizado con las estructuras requeridas');
         }
 
         return true;
@@ -235,6 +266,39 @@ export async function getDefaultPlaylist() {
         return jsonData.defaultPlaylist;
     } catch (error) {
         console.error('❌ Error al obtener la playlist por defecto:', error);
+        return null;
+    }
+}
+
+/** ✅
+ * Actualiza la información de la playlist por defecto en systemState.json
+ * @param {Object} data - Datos de la playlist por defecto (playlistName y playlistPath)
+ * @returns {Promise<Object|null>} La playlist por defecto actualizada o null si hay un error
+ */
+export async function updateDefaultPlaylist(data) {
+    try {
+        if (!data.playlistName || !data.playlistPath) {
+            console.error('❌ Se requieren playlistName y playlistPath para actualizar la playlist por defecto');
+            return null;
+        }
+
+        // 1. Leer el archivo systemState.json
+        const fileContent = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
+        const systemState = JSON.parse(fileContent);
+
+        // 2. Actualizar la propiedad defaultPlaylist
+        systemState.defaultPlaylist = {
+            playlistName: data.playlistName,
+            playlistPath: data.playlistPath
+        };
+
+        // 3. Guardar el archivo actualizado
+        await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(systemState, null, 2));
+        console.log(`✅ Playlist por defecto actualizada: ${data.playlistName}`);
+
+        return systemState.defaultPlaylist;
+    } catch (error) {
+        console.error('❌ Error al actualizar la playlist por defecto:', error);
         return null;
     }
 }

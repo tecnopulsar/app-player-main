@@ -10,6 +10,7 @@
  * @requires axios - Cliente HTTP para comunicación con VLC
  * @requires ./activePlaylist.mjs - Gestión de playlists activas
  * @requires ../config/appConfig.mjs - Configuración de la aplicación
+ * @requires ./redisClient.mjs - Funciones de Redis
  * 
  * @version 2.1.0
  * @license MIT
@@ -28,21 +29,7 @@
  * [⚠️] 8. Implementar rotación automática del archivo de estado
  * [⚠️] 9. Añadir validación de esquema para el estado guardado
  * [⚠️] 10. Soporte para múltiples instancias de VLC
- * 
- * @example
- * // Uso básico
- * import { getSystemState, startSystemStateMonitor } from './systemMonitor.js';
- * 
- * // Obtener estado actual
- * const state = await getSystemState();
- * 
- * // Iniciar monitoreo automático
- * const monitor = startSystemStateMonitor(30000); // 30 segundos
- * 
- * // Detener monitoreo
- * monitor.stop();
  */
-
 // ======================= IMPORTS ======================= //
 
 import fs from 'fs';
@@ -50,8 +37,9 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 import os from 'os';
 import axios from 'axios';
-import { getActivePlaylist } from './activePlaylist.mjs';
+import { getActivePlaylist, getDefaultPlaylist } from './activePlaylist.mjs';
 import { getConfig } from '../config/appConfig.mjs';
+import { saveStateToRedis, loadStateFromRedis } from './redisClient.mjs';
 
 // Rutas de archivos de estado
 const STATE_FILE_PATH = path.join(process.cwd(), 'src/config/systemState.json');
@@ -386,11 +374,21 @@ function getAppInfo() {
 // Función principal para obtener todo el estado del sistema
 export async function getSystemState() {
     try {
-        // Primero intentamos cargar el estado guardado
-        let systemState = {};
-        if (fs.existsSync(STATE_FILE_PATH)) {
+        // Primero intentamos cargar el estado desde Redis
+        let systemState = await loadStateFromRedis();
+
+        // Si no hay estado en Redis, intentamos cargar desde el archivo
+        if (!systemState && fs.existsSync(STATE_FILE_PATH)) {
+            console.log('ℹ️ Estado no encontrado en Redis, cargando desde archivo...');
             const data = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
             systemState = JSON.parse(data);
+
+            // Guardamos en Redis para la próxima vez
+            await saveStateToRedis(systemState);
+        } else if (systemState) {
+            console.log('ℹ️ Estado cargado desde Redis');
+        } else {
+            systemState = {};
         }
 
         // Si no hay una propiedad activePlaylist, inicializamos una vacía
@@ -402,6 +400,14 @@ export async function getSystemState() {
                 fileCount: 0,
                 isDefault: false,
                 lastLoaded: null
+            };
+        }
+
+        // Si no hay una propiedad defaultPlaylist, inicializamos una vacía
+        if (!systemState.defaultPlaylist) {
+            systemState.defaultPlaylist = {
+                playlistName: null,
+                playlistPath: null
             };
         }
 
@@ -477,6 +483,17 @@ export async function getSystemState() {
         // Obtener información de la aplicación
         const app = getAppInfo();
 
+        // Obtener información de la playlist por defecto
+        let defaultPlaylist = systemState.defaultPlaylist || { playlistName: null, playlistPath: null };
+        try {
+            const savedDefaultPlaylist = await getDefaultPlaylist();
+            if (savedDefaultPlaylist && savedDefaultPlaylist.playlistName) {
+                defaultPlaylist = savedDefaultPlaylist;
+            }
+        } catch (error) {
+            console.log(`⚠️ No se pudo recuperar la playlist por defecto: ${error.message}`);
+        }
+
         // Crear el estado del sistema con timestamp
         const newState = {
             timestamp: new Date().toISOString(),
@@ -484,7 +501,8 @@ export async function getSystemState() {
             storage,
             vlc,
             app,
-            activePlaylist: systemState.activePlaylist
+            activePlaylist: systemState.activePlaylist,
+            defaultPlaylist
         };
 
         return newState;
@@ -574,15 +592,58 @@ export async function saveSystemState(forceState = null) {
             }
         }
 
+        // Asegurar que defaultPlaylist tenga todos los campos necesarios y sean válidos
+        if (!stateToSave.defaultPlaylist) {
+            stateToSave.defaultPlaylist = {
+                playlistName: null,
+                playlistPath: null
+            };
+        } else {
+            // Si playlistPath es null pero tenemos playlistName, intentar reconstruir el path
+            if (!stateToSave.defaultPlaylist.playlistPath && stateToSave.defaultPlaylist.playlistName) {
+                console.log(`⚠️ defaultPlaylist.playlistPath es null pero tenemos defaultPlaylist.playlistName. Intentando reconstruir...`);
+
+                try {
+                    // Obtener información actualizada de la playlist por defecto
+                    const defaultPlaylist = await getDefaultPlaylist();
+                    if (defaultPlaylist && defaultPlaylist.playlistPath) {
+                        stateToSave.defaultPlaylist.playlistPath = defaultPlaylist.playlistPath;
+                        console.log(`✅ Path de playlist por defecto reconstruido: ${defaultPlaylist.playlistPath}`);
+                    } else {
+                        // Reconstruir utilizando la misma lógica que para activePlaylist
+                        const config = getConfig();
+                        const playlistsDir = config.paths.playlists;
+                        const playlistDir = config.paths.videos || 'public/videos';
+
+                        const possiblePath = path.join(playlistsDir, stateToSave.defaultPlaylist.playlistName,
+                            `${stateToSave.defaultPlaylist.playlistName}.m3u`);
+
+                        if (fs.existsSync(possiblePath)) {
+                            stateToSave.defaultPlaylist.playlistPath = possiblePath;
+                            console.log(`✅ Path de playlist por defecto reconstruido: ${possiblePath}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`❌ Error al reconstruir path de playlist por defecto: ${error.message}`);
+                }
+            }
+        }
+
         // Verificar que el directorio existe
         const dir = path.dirname(STATE_FILE_PATH);
         if (!fs.existsSync(dir)) {
             await fsPromises.mkdir(dir, { recursive: true });
         }
 
-        // Guardar el estado en el archivo
+        // 1. Guardar en Redis (primario)
+        const redisSaved = await saveStateToRedis(stateToSave);
+        if (redisSaved) {
+            console.log('✅ Estado del sistema guardado en Redis');
+        }
+
+        // 2. Guardar en archivo como respaldo
         await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(stateToSave, null, 2));
-        console.log(`Estado del sistema guardado en: ${STATE_FILE_PATH}`);
+        console.log(`✅ Estado del sistema guardado en: ${STATE_FILE_PATH} (respaldo)`);
 
         // Verificar después de guardar que playlistPath no es null
         if (stateToSave.activePlaylist && !stateToSave.activePlaylist.playlistPath &&
@@ -600,7 +661,16 @@ export async function saveSystemState(forceState = null) {
 // Función para cargar el estado guardado del sistema
 async function loadSystemState() {
     try {
+        // 1. Intentar cargar desde Redis (primario)
+        const redisState = await loadStateFromRedis();
+        if (redisState) {
+            console.log('✅ Estado del sistema cargado desde Redis');
+            return redisState;
+        }
+
+        // 2. Si no hay estado en Redis, cargar desde archivo (respaldo)
         if (fs.existsSync(STATE_FILE_PATH)) {
+            console.log('ℹ️ No hay estado en Redis, cargando desde archivo...');
             const data = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
             const state = JSON.parse(data);
 
@@ -618,6 +688,23 @@ async function loadSystemState() {
                 }
             }
 
+            // Verificar si defaultPlaylist existe pero no tiene playlistPath
+            if (state.defaultPlaylist && state.defaultPlaylist.playlistName && !state.defaultPlaylist.playlistPath) {
+                // Intentar obtener la información actualizada de la playlist por defecto
+                try {
+                    const defaultPlaylist = await getDefaultPlaylist();
+                    if (defaultPlaylist && defaultPlaylist.playlistPath) {
+                        console.log(`ℹ️ Actualizando defaultPlaylist.playlistPath en estado cargado de: null a: ${defaultPlaylist.playlistPath}`);
+                        state.defaultPlaylist.playlistPath = defaultPlaylist.playlistPath;
+                    }
+                } catch (error) {
+                    console.log(`⚠️ No se pudo recuperar la playlist por defecto para actualizar playlistPath: ${error.message}`);
+                }
+            }
+
+            // Guardar en Redis para la próxima vez
+            await saveStateToRedis(state);
+
             return state;
         }
 
@@ -627,41 +714,6 @@ async function loadSystemState() {
         console.error(`Error al cargar estado del sistema: ${error.message}`);
         return null;
     }
-}
-
-// Variable para almacenar el intervalo de monitoreo
-let monitorInterval = null;
-
-// Función para iniciar el monitoreo periódico del estado del sistema
-function startSystemStateMonitor(intervalMs = 60000) { // Por defecto cada minuto
-    if (monitorInterval) {
-        clearInterval(monitorInterval);
-    }
-
-    // Guardar estado inmediatamente al iniciar
-    saveSystemState().catch(err => {
-        console.error(`Error en la primera ejecución del monitor: ${err.message}`);
-    });
-
-    // Configurar intervalo para actualizaciones periódicas
-    monitorInterval = setInterval(() => {
-        saveSystemState().catch(err => {
-            console.error(`Error en la actualización periódica del estado: ${err.message}`);
-        });
-    }, intervalMs);
-
-    console.log(`Monitor de estado del sistema iniciado (intervalo: ${intervalMs}ms)`);
-
-    // Devolver una función para detener el monitoreo
-    return {
-        stop: () => {
-            if (monitorInterval) {
-                clearInterval(monitorInterval);
-                monitorInterval = null;
-                console.log('Monitor de estado del sistema detenido');
-            }
-        }
-    };
 }
 
 /**
@@ -708,47 +760,68 @@ async function reconstruirPathPlaylist(activePlaylist) {
 
         console.warn(`⚠️ No se pudo reconstruir la ruta para ${activePlaylist.playlistName}`);
     } catch (error) {
-        console.error(`❌ Error al reconstruir ruta de playlist: ${error.message}`);
+        console.error(`Error al reconstruir la ruta de la playlist: ${error.message}`);
     }
 }
 
-/**
- * Busca un archivo recursivamente en un directorio
- * @param {string} directory - Directorio donde buscar
- * @param {string} filename - Nombre del archivo a buscar
- * @returns {Promise<string|null>} - Ruta completa del archivo o null si no se encontró
- */
-async function buscarArchivoRecursivo(directory, filename) {
-    try {
-        const entries = await fsPromises.readdir(directory, { withFileTypes: true });
+// Función para iniciar el monitoreo periódico del estado del sistema
+function startSystemStateMonitor(intervalMs = 60000) { // Por defecto cada minuto
+    if (monitorInterval) {
+        clearInterval(monitorInterval);
+    }
 
-        for (const entry of entries) {
-            const fullPath = path.join(directory, entry.name);
+    // Guardar estado inmediatamente al iniciar
+    saveSystemState().catch(err => {
+        console.error(`Error en la primera ejecución del monitor: ${err.message}`);
+    });
 
-            if (entry.isDirectory()) {
-                const found = await buscarArchivoRecursivo(fullPath, filename);
-                if (found) return found;
-            } else if (entry.name === filename) {
-                return fullPath;
+    // Contador para limpieza periódica de la caché
+    let cleanupCounter = 0;
+
+    // Configurar intervalo para actualizaciones periódicas
+    monitorInterval = setInterval(() => {
+        // Guardar estado
+        saveSystemState().catch(err => {
+            console.error(`Error en la actualización periódica del estado: ${err.message}`);
+        });
+
+        // Incrementar contador
+        cleanupCounter++;
+
+        // Cada 24 horas (o 1440 minutos si el intervalo es 1 minuto), forzamos una recarga completa
+        // para evitar inconsistencias entre Redis y el archivo
+        if (cleanupCounter >= 1440 * 60000 / intervalMs) {
+            console.log('🔄 Ejecutando recarga completa de estado (mantenimiento programado)');
+            cleanupCounter = 0;
+
+            // Obtener estado desde archivo y actualizar Redis
+            try {
+                fsPromises.readFile(STATE_FILE_PATH, 'utf8')
+                    .then(data => {
+                        const state = JSON.parse(data);
+                        saveStateToRedis(state).catch(err => {
+                            console.error(`Error al actualizar Redis durante mantenimiento: ${err.message}`);
+                        });
+                    })
+                    .catch(err => {
+                        console.error(`Error al leer archivo durante mantenimiento: ${err.message}`);
+                    });
+            } catch (error) {
+                console.error(`Error en mantenimiento programado: ${error.message}`);
             }
         }
+    }, intervalMs);
 
-        return null;
-    } catch (error) {
-        console.error(`Error en búsqueda recursiva: ${error.message}`);
-        return null;
-    }
+    console.log(`Monitor de estado del sistema iniciado (intervalo: ${intervalMs}ms)`);
+
+    // Devolver una función para detener el monitoreo
+    return {
+        stop: () => {
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
+                console.log('Monitor de estado del sistema detenido');
+            }
+        }
+    };
 }
-
-export {
-    getSystemInfo,
-    getNetworkSummary,
-    getVLCStatus,
-    vlcRequest,
-    getStorageInfo,
-    getDiskInfo,
-    getAppInfo,
-    loadSystemState,
-    startSystemStateMonitor,
-    buscarArchivoRecursivo
-}; 
