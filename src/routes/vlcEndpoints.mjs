@@ -7,12 +7,13 @@ import { appConfig } from '../config/appConfig.mjs';
 import axios from 'axios';
 import { Router } from 'express';
 import FormData from 'form-data';
-import { updateActivePlaylist } from '../utils/activePlaylist.mjs';
+import { STATE_FILE_PATH, updateActivePlaylist } from '../utils/activePlaylist.mjs';
 
 const router = Router();
 let controllerClient;
 
 const snapshotPath = appConfig.paths.snapshots;
+const systemStatePath = appConfig.paths.systemState;
 
 // Inicializar el cliente controlador
 export const setControllerClient = (client) => {
@@ -118,8 +119,27 @@ router.get('/snapshot', async (req, res) => {
         // Renombrar el archivo de captura de pantalla más reciente a "snapshot.png"
         const newSnapshotPath = renameSnapshot(recentSnapshot);
 
-        // Responder con el nombre del archivo
-        res.json({ fileName: newSnapshotPath });
+        // Leer el archivo de estado del sistema
+        const data = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
+        let systemState;
+        try {
+            systemState = JSON.parse(data);
+        } catch (parseError) {
+            return res.status(500).json({ error: 'Error al parsear el archivo JSON' });
+        }
+
+        // Actualizar la información del snapshot
+        systemState.snapshot.url = "public/snapshots/snapshot.jpg"; // Actualiza la URL según se requiera
+        systemState.snapshot.createdAt = new Date().toISOString();
+
+        // Guardar los cambios en el archivo de estado
+        await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(systemState, null, 2));
+
+        // Enviar respuesta con la información actualizada
+        res.json({
+            fileName: newSnapshotPath,
+            snapshot: systemState.snapshot
+        });
         console.log(`Snapshot del device: ${newSnapshotPath}`);
     } catch (err) {
         console.error(`Error al capturar el snapshot: ${err.message}`);

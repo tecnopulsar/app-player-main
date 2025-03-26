@@ -81,9 +81,9 @@
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
-    "playlistName": "Joy",
-    "playlistPath": "public/videos/Joy/Joy.m3u",
-    "lastLoaded": "2025-03-26T13:25:17.507Z",
+    "playlistName": "wetechar",
+    "playlistPath": "public/videos/wetechar/wetechar.m3u",
+    "lastLoaded": "2025-03-26T13:36:51.794Z",
     "isActive": true,
     "currentIndex": 1,
     "fileCount": 1,
@@ -95,7 +95,11 @@
     }
   },
   "defaultPlaylist": {
-    "playlistName": "Joy",
-    "playlistPath": "public/videos/Joy/Joy.m3u"
+    "playlistName": "wetechar",
+    "playlistPath": "public/videos/wetechar/wetechar.m3u"
+  },
+  "snapshot": {
+    "url": "public/snapshots/snapshot.jpg",
+    "createdAt": "2025-03-26T14:22:35.588Z"
   }
 }
