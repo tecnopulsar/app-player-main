@@ -210,3 +210,31 @@ export async function getPlaylistPath(playlistName) {
 
     return null;
 }
+
+/** ✅
+ * Obtiene la información de la playlist por defecto desde systemState.json.
+ * @returns {Promise<Object|null>} Retorna la playlist por defecto o null si no existe.
+ */
+export async function getDefaultPlaylist() {
+    try {
+        if (!fs.existsSync(STATE_FILE_PATH)) {
+            console.error('❌ El archivo systemState.json no existe.');
+            return null;
+        }
+
+        // Leer el archivo y convertirlo en JSON
+        const fileContent = await fsPromises.readFile(STATE_FILE_PATH, 'utf-8');
+        const jsonData = JSON.parse(fileContent);
+
+        // Verificar si la propiedad defaultPlaylist está presente
+        if (!jsonData.defaultPlaylist) {
+            console.warn('⚠️ No se encontró la propiedad defaultPlaylist en systemState.json.');
+            return null;
+        }
+
+        return jsonData.defaultPlaylist;
+    } catch (error) {
+        console.error('❌ Error al obtener la playlist por defecto:', error);
+        return null;
+    }
+}

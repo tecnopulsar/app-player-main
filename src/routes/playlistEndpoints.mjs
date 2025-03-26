@@ -221,6 +221,12 @@ router.delete('/:playlistName', async (req, res) => {
             return res.status(400).json({ success: false, message: 'No se puede eliminar la playlist activa' });
         }
 
+        // Verificar si es la playlist por defecto
+        const defaultPlaylist = getDefaultPlaylist(); // Asegúrate de tener una función que obtenga la defaultPlaylist
+        if (defaultPlaylist?.playlistName === playlistName) {
+            return res.status(400).json({ success: false, message: 'No se puede eliminar la playlist por defecto' });
+        }
+
         // Eliminar la carpeta de la playlist
         await fsPromises.rm(playlistDir, { recursive: true, force: true });
 
