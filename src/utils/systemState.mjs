@@ -358,8 +358,8 @@ function getAppInfo() {
         deviceType: config.device?.type || 'player',
         deviceGroup: config.device?.group || 'default',
         server: {
-            port: config.server.port,
-            host: config.server.host
+            port: config.appServer.port,
+            host: config.appServer.host
         },
         vlcConfig: {
             host: config.vlc.host,

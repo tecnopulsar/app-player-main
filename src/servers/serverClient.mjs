@@ -10,16 +10,20 @@ import { getNetworkInfo } from '../utils/networkUtils.mjs';
 // Importar el router centralizado
 import router from '../routes/index.mjs';
 
+// Importar funcionalidad Socket.IO Cliente
+import { initSocketClient, disconnectSocketClient } from '../clients/socketClient.mjs';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Definir el puerto usando la configuración o la variable de entorno
-const port = process.env.PORT ? parseInt(process.env.PORT) : (appConfig.server.port || 3000);
+// Definir el puerto usando la configuración
+export const portAppServer = appConfig.appServer.port;
 
 // Variables globales para el servidor
 export let app;
 export let server;
 export let networkInfo;
+export let socketClient; // Cliente Socket.IO
 
 function createExpressApp() {
   app = express();
@@ -56,7 +60,7 @@ async function getAllNetworkInfo() {
   }
 }
 
-export async function initializeServer(customPort = port) {
+export async function initAppServer(port = portAppServer) {
   try {
     // Obtener información de red antes de iniciar el servidor
     await getAllNetworkInfo();
@@ -67,16 +71,31 @@ export async function initializeServer(customPort = port) {
     server = createServer(app);
 
     return new Promise((resolve, reject) => {
-      server.listen(customPort, '0.0.0.0', () => {
+      server.listen(port, '0.0.0.0', () => {
         // Asegúrate de que networkInfo esté definido antes de usarlo
         const ipAddress = networkInfo?.eth0?.ip || networkInfo?.wlan0?.ip || 'IP_LOCAL';
         console.log('╔═══════════════════════════════════════════════╗');
         console.log('║           SERVIDOR EXPRESS INICIADO           ║');
         console.log('╠═══════════════════════════════════════════════╣');
-        console.log(`║ Puerto: ${customPort}                         ║`);
-        console.log(`║ Local: http://localhost:${customPort}         ║`);
-        console.log(`║ Red local: http://${ipAddress}:${customPort}  ║`);
+        console.log(`║ Puerto: ${port}                               ║`);
+        console.log(`║ Local: http://localhost:${port}               ║`);
+        console.log(`║ Red local: http://${ipAddress}:${port}        ║`);
         console.log('╚═══════════════════════════════════════════════╝');
+
+        // Iniciar el monitoreo en tiempo real desde monitorService
+        try {
+          import('../services/monitorService.mjs')
+            .then(monitor => {
+              monitor.startMonitoring();
+              console.log('✅ Servicio de monitoreo en tiempo real iniciado');
+            })
+            .catch(err => {
+              console.error('Error al cargar el servicio de monitoreo:', err);
+            });
+        } catch (error) {
+          console.warn('No se pudo iniciar el servicio de monitoreo:', error.message);
+        }
+
         resolve(server);
       });
 
@@ -91,8 +110,28 @@ export async function initializeServer(customPort = port) {
   }
 }
 
-export function stopServer() {
+export function stopAppServer() {
   if (server) {
+    console.log('Deteniendo servidor Express...');
+
+    // Detener el servicio de monitoreo
+    try {
+      import('../services/monitorService.mjs')
+        .then(monitor => {
+          monitor.stopMonitoring();
+          console.log('Servicio de monitoreo detenido');
+        })
+        .catch(err => {
+          console.error('Error al detener el servicio de monitoreo:', err);
+        });
+    } catch (error) {
+      console.warn('Error al detener el servicio de monitoreo:', error.message);
+    }
+
+    // Desconectar cliente Socket.IO
+    disconnectSocketClient();
+
+    // Cerrar el servidor HTTP
     server.close(() => {
       console.log('Servidor Express detenido correctamente');
       server = null;
@@ -102,13 +141,11 @@ export function stopServer() {
 
 // Manejar el cierre de la aplicación
 process.on('SIGINT', () => {
-  stopServer();
+  stopAppServer();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  stopServer();
+  stopAppServer();
   process.exit(0);
 });
-
-export { port };

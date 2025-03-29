@@ -19,19 +19,19 @@
         "address": "127.0.0.1",
         "netmask": "255.0.0.0",
         "mac": "00:00:00:00:00:00",
-        "internal": true
+        "internal": false
       },
       "eth0": {
         "address": "192.168.1.200",
         "netmask": "255.255.255.0",
         "mac": "d8:3a:dd:0b:20:e8",
-        "internal": false
+        "active": true
       },
       "wlan0": {
         "address": "192.168.1.84",
         "netmask": "255.255.255.0",
         "mac": "d8:3a:dd:0b:20:e9",
-        "internal": false
+        "active": false
       }
     },
     "timestamp": "2025-03-26T11:51:04.095Z"
@@ -81,13 +81,13 @@
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
-    "playlistName": "wetechar",
-    "playlistPath": "public/videos/wetechar/wetechar.m3u",
-    "lastLoaded": "2025-03-26T13:36:51.794Z",
+    "playlistName": "classic",
+    "playlistPath": "public/videos/classic/classic.m3u",
+    "lastLoaded": "2025-03-26T14:54:09.957Z",
     "isActive": true,
     "currentIndex": 1,
-    "fileCount": 1,
-    "isDefault": true,
+    "fileCount": 3,
+    "isDefault": false,
     "defaultPlaylistData": {
       "description": "Playlist por defecto",
       "createdDate": "2025-03-26T11:29:00.000Z",
@@ -100,6 +100,6 @@
   },
   "snapshot": {
     "url": "public/snapshots/snapshot.jpg",
-    "createdAt": "2025-03-26T14:22:35.588Z"
+    "createdAt": "2025-03-26T21:46:53.485Z"
   }
 }

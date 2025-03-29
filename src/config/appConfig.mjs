@@ -1,5 +1,6 @@
 import os from 'os';
 import crypto from 'crypto';
+import stateManager from '../utils/stateManager.mjs';
 
 // Generar un ID de dispositivo único basado en el hostname y MAC
 function generateDeviceId() {
@@ -26,26 +27,30 @@ function generateDeviceId() {
     return hash.substring(0, 8);
 }
 
-// Configuración de la aplicación
-const appConfig = {
+// Configuración base de la aplicación
+const baseConfig = {
     app: {
         name: 'App Player',
         version: '1.0.0',
         defaultPlaylist: 'default'
     },
-    // Información del dispositivo
     device: {
         id: generateDeviceId(),
         name: os.hostname(),
-        type: 'player',  // Tipo de dispositivo (player, controller, etc.)
-        group: 'default' // Grupo al que pertenece el dispositivo
+        type: 'player',
+        group: 'default',
+        authToken: process.env.AUTH_TOKEN || 'default_player_token'
     },
-    // Configuración del servidor
-    server: {
+    appServer: {
         port: process.env.PORT || 3000,
-        host: '0.0.0.0'  // Escuchar en todas las interfaces
+        host: '0.0.0.0'
     },
-    // Configuración de VLC
+    socket: {
+        socketUrl: process.env.SOCKET_URL || 'http://192.168.1.200:3001',
+        port: process.env.SOCKET_PORT || 3001,
+        reconnectInterval: 5000,
+        retryAttempts: 10
+    },
     vlc: {
         host: 'localhost',
         port: 8080,
@@ -57,21 +62,18 @@ const appConfig = {
             '--no-sub-autodetect-file'
         ]
     },
-    // Configuración de Redis
     redis: {
         host: '127.0.0.1',
         port: 6379,
         db: 0,
         keyPrefix: 'player:',
-        retryInterval: 1000, // ms
+        retryInterval: 1000,
         maxRetries: 10
     },
-    // Configuración de videos
     videos: {
         directory: './public/videos',
         extensions: ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v']
     },
-    // Configuración de rutas
     paths: {
         uploads: './public/uploads',
         public: './public',
@@ -81,17 +83,44 @@ const appConfig = {
         images: './public/images',
         temp: './public/temp'
     },
-    // Configuración de seguridad
     security: {
-        maxFileSize: 1000 * 1024 * 1024, // 1000 MB
+        maxFileSize: 1000 * 1024 * 1024,
         allowedFileTypes: ['video/mp4', 'video/x-matroska', 'video/avi', 'video/quicktime', 'video/webm'],
         allowedExtensions: ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v', '.m3u']
     }
 };
 
 // Función para obtener la configuración
-export function getConfig() {
-    return appConfig;
+export async function getConfig() {
+    // Inicializar el estado si no está inicializado
+    if (!stateManager.state) {
+        await stateManager.initialize();
+    }
+
+    // Obtener el estado actual
+    const state = stateManager.getState();
+
+    // Combinar la configuración base con el estado actual
+    return {
+        ...baseConfig,
+        device: {
+            ...baseConfig.device,
+            id: state.app.deviceId,
+            name: state.app.deviceName,
+            type: state.app.deviceType,
+            group: state.app.deviceGroup
+        },
+        appServer: {
+            ...baseConfig.appServer,
+            port: state.app.server.port,
+            host: state.app.server.host
+        },
+        vlc: {
+            ...baseConfig.vlc,
+            host: state.app.vlcConfig.host,
+            port: state.app.vlcConfig.port
+        }
+    };
 }
 
-export { appConfig };
+export { baseConfig };

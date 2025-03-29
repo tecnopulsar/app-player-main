@@ -99,6 +99,80 @@ La aplicación puede funcionar como un servidor multimedia, permitiendo acceder 
 - Soporte para reproducción sincronizada en múltiples dispositivos
 - Mejoras en el sistema de playlists para soportar programación y rotación de contenido
 
+## Nuevo Sistema de Monitoreo en Tiempo Real
+
+La aplicación incluye un sistema de monitoreo en tiempo real basado en Socket.IO que permite compartir el estado de la aplicación con una aplicación controladora o de administración de terminales.
+
+### Características del Sistema de Monitoreo
+
+- **Comunicación Bidireccional**: Establece un canal de comunicación en tiempo real entre la aplicación player y el controlador/administrador.
+- **Emisión de Eventos**: Notifica automáticamente los cambios en el estado del reproductor, red, sistema y errores.
+- **Persistencia de Estado**: Almacena el estado completo de la aplicación en Redis para recuperación rápida.
+- **Autenticación**: Implementa un sistema de autenticación por token para las conexiones Socket.IO.
+- **Escalabilidad**: Diseñado para manejar múltiples conexiones simultáneas.
+- **Bajo Consumo de Recursos**: Optimizado para funcionar en dispositivos con recursos limitados como Raspberry Pi.
+
+### Eventos Socket.IO
+
+El sistema emite y escucha varios tipos de eventos:
+
+| Evento | Descripción |
+|--------|-------------|
+| `connect` | Establecimiento de conexión con el servidor |
+| `disconnect` | Desconexión del servidor |
+| `player:status` | Actualización del estado del reproductor |
+| `system:status` | Actualización del estado del sistema |
+| `network:status` | Actualización del estado de la red |
+| `error` | Notificación de errores |
+| `command` | Recepción de comandos desde el controlador |
+
+### Implementación
+
+La implementación se basa en la biblioteca Socket.IO y utiliza el sistema de monitoreo existente para recopilar y transmitir datos en tiempo real.
+
+```javascript
+// Ejemplo simplificado de implementación
+import { Server } from 'socket.io';
+import { getSystemState } from '../utils/systemState.mjs';
+
+// Crear servidor Socket.IO
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Manejar conexiones
+io.on('connection', (socket) => {
+  console.log('Cliente conectado:', socket.id);
+  
+  // Enviar estado inicial
+  socket.emit('system:status', getSystemState());
+  
+  // Manejar comandos
+  socket.on('command', (data) => {
+    // Procesar comandos recibidos
+  });
+  
+  // Manejar desconexión
+  socket.on('disconnect', () => {
+    console.log('Cliente desconectado:', socket.id);
+  });
+});
+```
+
+### Integración con la Aplicación Controladora
+
+La aplicación controladora se conecta al servicio Socket.IO del player y puede:
+
+1. Recibir actualizaciones de estado en tiempo real
+2. Enviar comandos al reproductor
+3. Monitorear múltiples dispositivos simultáneamente
+4. Recibir alertas automáticas sobre problemas
+
+Esta implementación permite una administración centralizada y eficiente de múltiples dispositivos player desde una única interfaz.
+
 ## Conclusiones
 
 App-Player representa una solución versátil y potente para la reproducción y gestión de contenido multimedia, combinando la flexibilidad de las tecnologías web con la potencia de herramientas nativas para ofrecer una experiencia de usuario de alta calidad. Su arquitectura modular y extensible permite adaptarla a diferentes casos de uso y expandir sus funcionalidades según las necesidades específicas. 

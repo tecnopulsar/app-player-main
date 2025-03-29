@@ -30,10 +30,15 @@ app-player/
 │   │   └── vlcEndpoints.mjs         # Endpoints para control de VLC
 │   ├── scripts/             # Scripts adicionales
 │   ├── servers/             # Configuración de servidores
+│   │   ├── serverClient.mjs         # Servidor Express principal
+│   │   └── socketServer.mjs         # Servidor Socket.IO para monitoreo
 │   ├── services/            # Servicios de la aplicación
+│   │   ├── monitorService.mjs       # Servicio de monitoreo en tiempo real
+│   │   └── stateManager.mjs         # Gestor centralizado de estado
 │   ├── utils/               # Utilidades
 │   │   ├── activePlaylist.mjs       # Funciones para gestionar playlist activa
 │   │   ├── setupDirectories.js      # Configuración de directorios
+│   │   ├── systemState.mjs          # Monitoreo de estado del sistema
 │   │   └── vlcStatus.js             # Funciones para estado de VLC
 │   └── windows/             # Configuración de ventanas
 ├── views/                   # Vistas y plantillas

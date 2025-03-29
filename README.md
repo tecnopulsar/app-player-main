@@ -12,6 +12,7 @@ Aplicación de reproducción de contenido multimedia desarrollada con Electron.j
 - Control remoto vía API REST
 - Gestión de ventanas optimizada
 - Monitoreo de recursos del sistema
+- **Monitoreo en tiempo real mediante Socket.IO**
 
 ## 🛠️ Tecnologías Utilizadas
 
@@ -99,6 +100,18 @@ La aplicación expone las siguientes rutas API:
 - `GET /api/files/list`: Lista archivos disponibles
 - `POST /api/files/upload`: Sube archivos
 - `DELETE /api/files/:id`: Elimina archivos
+
+## Sistema de Monitoreo en Tiempo Real
+
+La aplicación incluye un completo sistema de monitoreo en tiempo real basado en Socket.IO que permite:
+
+- Comunicación bidireccional entre los dispositivos player y aplicaciones controladoras
+- Emisión automática de eventos cuando cambia el estado del sistema
+- Transmisión del estado del reproductor, sistema, red y playlist
+- Recepción de comandos desde aplicaciones controladoras
+- Autenticación de conexiones mediante tokens
+
+Para más detalles sobre este sistema, consulte la [documentación del sistema de monitoreo](docs/monitor_realtime.md).
 
 ## Estructura del Proyecto
 

@@ -1,0 +1,10 @@
+{"timestamp":"2025-03-26T16:20:39.039Z","event":"command:sent","data":{"id":"cmd_1743006039038","action":"stop","params":{},"timestamp":"2025-03-26T16:20:39.038Z"}}
+{"timestamp":"2025-03-26T19:03:56.373Z","event":"disconnect","data":{"reason":"transport close"}}
+{"timestamp":"2025-03-26T19:04:53.561Z","event":"disconnect","data":{"reason":"transport close"}}
+{"timestamp":"2025-03-26T19:32:19.042Z","event":"disconnect","data":{"reason":"ping timeout"}}
+{"timestamp":"2025-03-26T19:36:03.120Z","event":"disconnect","data":{"reason":"transport close"}}
+{"timestamp":"2025-03-26T19:42:04.321Z","event":"disconnect","data":{"reason":"ping timeout"}}
+{"timestamp":"2025-03-26T19:42:10.843Z","event":"disconnect","data":{"reason":"ping timeout"}}
+{"timestamp":"2025-03-26T22:28:07.874Z","event":"disconnect","data":{"reason":"transport close"}}
+{"timestamp":"2025-03-26T22:28:30.709Z","event":"disconnect","data":{"reason":"transport close"}}
+{"timestamp":"2025-03-26T22:43:15.391Z","event":"disconnect","data":{"reason":"transport close"}}

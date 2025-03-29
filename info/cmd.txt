@@ -1,0 +1,13 @@
+Procesos
+
+sudo lsof -i :3001
+sudo kill 46433
+sudo kill -9 46433
+
+Puertos
+
+netstat -tuln
+
+detalle
+
+sudo lsof -i :<puerto>

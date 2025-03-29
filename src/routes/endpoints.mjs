@@ -24,7 +24,7 @@ router.get('/dashboard', async (req, res) => {
     console.log('Accediendo a la ruta del dashboard');
     try {
         const templateData = {
-            port: appConfig.server.port,
+            port: appConfig.appServer.port,
             directorioVideos: appConfig.paths.playlists,
             networkInfo: JSON.stringify(networkInfo || {}),
             year: new Date().getFullYear()

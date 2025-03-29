@@ -5,11 +5,15 @@ import { fileURLToPath } from 'url';
 import path, { dirname } from 'path';
 import { WindowManager } from './src/windows/windowManager.js';
 import { VLCPlayer } from './src/lib/vlcPlayer.js';
-import { appConfig } from './src/config/appConfig.mjs';
-import { initializeServer, stopServer } from './src/servers/serverClient.mjs';
+import { initAppServer, portAppServer, stopAppServer } from './src/servers/serverClient.mjs';
+import { initSocketClient, portSocket } from './src/clients/socketClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
 import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.mjs';
 import { getActivePlaylist, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
+import stateManager from './utils/stateManager.mjs';
+import stateSync from './utils/stateSync.mjs';
+
+
 // Deshabilitar la aceleración por hardware
 console.log('🔄 Deshabilitando la aceleración por hardware...');
 app.disableHardwareAcceleration();
@@ -18,7 +22,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Configurar el puerto
-const port = appConfig.server.port || 3000;
 const windowManager = new WindowManager();
 
 // Mantener una referencia global del objeto window
@@ -31,6 +34,11 @@ global.vlcPlayer = null;
 
 // Añadir variable global para el monitor de estado
 let stateMonitor = null;
+
+async function initialize() {
+  await stateManager.initialize();
+  await stateSync.initialize();
+}
 
 async function createWindow() {
   try {
@@ -92,15 +100,16 @@ async function createWindow() {
 
     // ✅
     // Iniciar el servidor con la app configurada
-    await initializeServer();
+    await initAppServer(portAppServer);
+    await initSocketClient(portSocket);
 
     // Cargar el archivo index.html
-    await mainWindow.loadURL(`http://localhost:${port}`);
+    await mainWindow.loadURL(`http://localhost:${portAppServer}`);
 
     // Pasar variables al frontend
     mainWindow.webContents.on('did-finish-load', () => {
       mainWindow.webContents.executeJavaScript(`
-        window.port = ${port};
+        window.port = ${portAppServer};
         window.directorioVideos = '${path.join(__dirname, 'videos')}';
         window.playlistConfigured = ${playlistIsValid};
       `);
@@ -108,7 +117,7 @@ async function createWindow() {
 
     // Enviar logs iniciales
     sendLog('Aplicación iniciada', 'success');
-    sendLog(`Servidor Express corriendo en puerto ${port}`, 'info');
+    sendLog(`Servidor Express corriendo en puerto ${portAppServer}`, 'info');
     sendLog(`Directorio de videos: ${path.join(__dirname, 'videos')}`, 'info');
 
     // Solo mostrar estado de VLC si se inició
@@ -138,7 +147,7 @@ app.on('window-all-closed', () => {
 
   // Detener el servidor
   console.log('Deteniendo servidor web...');
-  stopServer();
+  stopAppServer();
 
 
   if (vlcPlayer) {

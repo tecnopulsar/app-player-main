@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor de Depuración App-Player</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding-top: 20px; }
+    .device-card { margin-bottom: 15px; }
+    .status-badge {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+    }
+    .status-online { background-color: #28a745; }
+    .status-offline { background-color: #dc3545; }
+    .status-playing { background-color: #28a745; }
+    .status-paused { background-color: #ffc107; }
+    .status-stopped { background-color: #6c757d; }
+    
+    #events-container {
+      height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 0.9rem;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+    }
+    .event-item {
+      padding: 5px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .event-timestamp {
+      color: #6c757d;
+      font-size: 0.8rem;
+    }
+    .event-name {
+      font-weight: bold;
+      color: #007bff;
+    }
+    .event-device {
+      color: #28a745;
+    }
+    pre {
+      margin: 0;
+      padding: 5px;
+      background-color: #f1f1f1;
+      border-radius: 3px;
+      max-height: 200px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="mb-4">
+      <h1>Monitor de Depuración App-Player</h1>
+      <p class="lead">Monitoreo en tiempo real de dispositivos mediante Socket.IO</p>
+      <div class="alert alert-info">
+        Servidor ejecutándose en puerto <span id="server-port">4000</span>
+        <span class="float-end">
+          <span class="badge bg-primary" id="connected-count">0</span> dispositivos conectados
+        </span>
+      </div>
+    </header>
+    
+    <div class="row">
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-header">
+            <h5>Dispositivos Conectados</h5>
+          </div>
+          <div class="card-body">
+            <div id="devices-container">
+              <div class="text-center text-muted py-5">
+                <p>No hay dispositivos conectados</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card mt-3">
+          <div class="card-header">
+            <h5>Enviar Comando</h5>
+          </div>
+          <div class="card-body">
+            <form id="command-form">
+              <div class="mb-3">
+                <label for="device-select" class="form-label">Dispositivo</label>
+                <select class="form-select" id="device-select" required>
+                  <option value="">Seleccionar dispositivo...</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="command-action" class="form-label">Acción</label>
+                <select class="form-select" id="command-action" required>
+                  <option value="">Seleccionar acción...</option>
+                  <option value="play">Reproducir (play)</option>
+                  <option value="pause">Pausar (pause)</option>
+                  <option value="stop">Detener (stop)</option>
+                  <option value="volume">Cambiar volumen (volume)</option>
+                  <option value="playlist">Cambiar playlist (playlist)</option>
+                  <option value="reboot">Reiniciar (reboot)</option>
+                </select>
+              </div>
+              <div class="mb-3" id="params-container">
+                <!-- Los parámetros se generarán dinámicamente aquí -->
+              </div>
+              <button type="submit" class="btn btn-primary">Enviar Comando</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-8">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>Eventos en Tiempo Real</h5>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary" id="clear-events">Limpiar</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="events-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h5>Detalle del Dispositivo</h5>
+          </div>
+          <div class="card-body">
+            <div id="device-detail">
+              <div class="text-center text-muted py-5">
+                <p>Selecciona un dispositivo para ver sus detalles</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Conectar al servidor Socket.IO
+    const socket = io();
+    
+    // Elementos DOM
+    const devicesContainer = document.getElementById('devices-container');
+    const eventsContainer = document.getElementById('events-container');
+    const deviceDetail = document.getElementById('device-detail');
+    const connectedCount = document.getElementById('connected-count');
+    const deviceSelect = document.getElementById('device-select');
+    const commandAction = document.getElementById('command-action');
+    const paramsContainer = document.getElementById('params-container');
+    const commandForm = document.getElementById('command-form');
+    const clearEvents = document.getElementById('clear-events');
+    
+    // Almacenamiento de dispositivos
+    const devices = new Map();
+    
+    // Actualizar interfaz de dispositivos
+    function updateDevicesUI() {
+      deviceSelect.innerHTML = '<option value="">Seleccionar dispositivo...</option>';
+      
+      if (devices.size === 0) {
+        devicesContainer.innerHTML = `
+          <div class="text-center text-muted py-5">
+            <p>No hay dispositivos conectados</p>
+          </div>
+        `;
+        connectedCount.textContent = '0';
+        return;
+      }
+      
+      connectedCount.textContent = devices.size;
+      let html = '';
+      
+      devices.forEach((device, socketId) => {
+        const statusClass = device.connected ? 'status-online' : 'status-offline';
+        const statusText = device.connected ? 'Conectado' : 'Desconectado';
+        const playerStatus = device.status || 'unknown';
+        const playerStatusClass = `status-${playerStatus}`;
+        
+        html += `
+          <div class="device-card" data-socket-id="${socketId}">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <span class="status-badge ${statusClass}" title="${statusText}"></span>
+                <strong>${device.deviceName}</strong>
+                <small class="text-muted">(${device.deviceId})</small>
+              </div>
+              <div>
+                <span class="badge bg-secondary">${playerStatus}</span>
+              </div>
+            </div>
+            <div class="mt-1">
+              <small class="text-muted">
+                Última actividad: ${new Date(device.lastSeen).toLocaleTimeString()}
+              </small>
+            </div>
+            <div class="mt-2">
+              <button class="btn btn-sm btn-outline-primary view-device" data-socket-id="${socketId}">
+                Ver detalle
+              </button>
+              <button class="btn btn-sm btn-outline-secondary request-state" data-socket-id="${socketId}">
+                Solicitar estado
+              </button>
+            </div>
+          </div>
+        `;
+        
+        // Agregar al selector de dispositivos
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.textContent = `${device.deviceName} (${device.deviceId})`;
+        deviceSelect.appendChild(option);
+      });
+      
+      devicesContainer.innerHTML = html;
+      
+      // Agregar event listeners
+      document.querySelectorAll('.view-device').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const socketId = e.target.dataset.socketId;
+          showDeviceDetail(socketId);
+        });
+      });
+      
+      document.querySelectorAll('.request-state').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const socketId = e.target.dataset.socketId;
+          requestDeviceState(socketId);
+        });
+      });
+    }
+    
+    // Mostrar detalle de dispositivo
+    function showDeviceDetail(socketId) {
+      const device = devices.get(socketId);
+      if (!device) return;
+      
+      let html = `
+        <h4>${device.deviceName} <small class="text-muted">(${device.deviceId})</small></h4>
+        <div class="row">
+          <div class="col-md-6">
+            <h5>Información General</h5>
+            <table class="table">
+              <tr>
+                <th>Estado</th>
+                <td>
+                  <span class="badge ${device.connected ? 'bg-success' : 'bg-danger'}">
+                    ${device.connected ? 'Conectado' : 'Desconectado'}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <th>Tipo</th>
+                <td>${device.deviceType || 'Desconocido'}</td>
+              </tr>
+              <tr>
+                <th>Última Actividad</th>
+                <td>${new Date(device.lastSeen).toLocaleString()}</td>
+              </tr>
+            </table>
+          </div>
+      `;
+      
+      if (device.state) {
+        html += `
+          <div class="col-md-6">
+            <h5>Estado del Reproductor</h5>
+            <table class="table">
+              <tr>
+                <th>Estado</th>
+                <td>
+                  <span class="badge bg-secondary">
+                    ${device.state.player?.status || 'Desconocido'}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <th>Reproduciendo</th>
+                <td>${device.state.player?.currentItem || 'Nada'}</td>
+              </tr>
+              <tr>
+                <th>Volumen</th>
+                <td>${device.state.player?.volume || '0'}</td>
+              </tr>
+            </table>
+          </div>
+        `;
+      }
+      
+      html += `</div>`;
+      
+      // Mostrar JSON del estado completo si existe
+      if (device.state) {
+        html += `
+          <div class="mt-3">
+            <h5>Estado Completo</h5>
+            <pre>${JSON.stringify(device.state, null, 2)}</pre>
+          </div>
+        `;
+      }
+      
+      deviceDetail.innerHTML = html;
+    }
+    
+    // Solicitar estado de un dispositivo
+    function requestDeviceState(socketId) {
+      socket.emit('request_device_state', { socketId });
+      
+      addEvent({
+        event: 'request:state',
+        deviceId: devices.get(socketId)?.deviceId || 'unknown',
+        data: { socketId }
+      });
+    }
+    
+    // Agregar evento a la lista
+    function addEvent(eventData) {
+      const { event, deviceId, data, timestamp = new Date().toISOString() } = eventData;
+      
+      const eventElement = document.createElement('div');
+      eventElement.className = 'event-item';
+      
+      eventElement.innerHTML = `
+        <div>
+          <span class="event-timestamp">${new Date(timestamp).toLocaleTimeString()}</span>
+          <span class="event-name">${event}</span>
+          <span class="event-device">${deviceId}</span>
+        </div>
+        <pre>${JSON.stringify(data, null, 2)}</pre>
+      `;
+      
+      eventsContainer.appendChild(eventElement);
+      eventsContainer.scrollTop = eventsContainer.scrollHeight;
+    }
+    
+    // Actualizar formulario de comandos según la acción seleccionada
+    commandAction.addEventListener('change', () => {
+      const action = commandAction.value;
+      let paramsHtml = '';
+      
+      if (action === 'volume') {
+        paramsHtml = `
+          <label for="volume-param" class="form-label">Volumen (0-100)</label>
+          <input type="number" class="form-control" id="volume-param" name="volume" 
+                min="0" max="100" value="80" required>
+        `;
+      } else if (action === 'playlist') {
+        paramsHtml = `
+          <label for="playlist-param" class="form-label">Nombre de la Playlist</label>
+          <input type="text" class="form-control" id="playlist-param" name="playlist" required>
+        `;
+      }
+      
+      paramsContainer.innerHTML = paramsHtml;
+    });
+    
+    // Enviar comando
+    commandForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const deviceId = deviceSelect.value;
+      const action = commandAction.value;
+      
+      if (!deviceId || !action) return;
+      
+      const params = {};
+      
+      if (action === 'volume') {
+        params.volume = parseInt(document.getElementById('volume-param').value);
+      } else if (action === 'playlist') {
+        params.playlist = document.getElementById('playlist-param').value;
+      }
+      
+      fetch(`/api/command/${deviceId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action, params })
+      })
+      .then(res => res.json())
+      .then(data => {
+        addEvent({
+          event: 'command:sent',
+          deviceId,
+          data: data.command
+        });
+      })
+      .catch(err => console.error('Error al enviar comando:', err));
+    });
+    
+    // Limpiar eventos
+    clearEvents.addEventListener('click', () => {
+      eventsContainer.innerHTML = '';
+    });
+    
+    // Eventos Socket.IO
+    socket.on('connect', () => {
+      console.log('Conectado al servidor');
+      
+      // Cargar dispositivos al conectar
+      fetch('/api/devices')
+        .then(res => res.json())
+        .then(data => {
+          data.devices.forEach(device => {
+            devices.set(device.id, device);
+          });
+          updateDevicesUI();
+        })
+        .catch(err => console.error('Error al cargar dispositivos:', err));
+    });
+    
+    socket.on('device:connected', (data) => {
+      devices.set(data.socketId, data);
+      updateDevicesUI();
+      
+      addEvent({
+        event: 'device:connected',
+        deviceId: data.deviceId,
+        data
+      });
+    });
+    
+    socket.on('device:disconnected', (data) => {
+      const device = devices.get(data.socketId);
+      if (device) {
+        device.connected = false;
+        device.disconnectReason = data.reason;
+        device.disconnectTime = new Date();
+        devices.set(data.socketId, device);
+      }
+      
+      updateDevicesUI();
+      
+      addEvent({
+        event: 'device:disconnected',
+        deviceId: data.deviceId,
+        data
+      });
+    });
+    
+    socket.on('device:state', (data) => {
+      const device = devices.get(data.socketId);
+      if (device) {
+        device.state = data.state;
+        device.lastSeen = new Date();
+        devices.set(data.socketId, device);
+      }
+      
+      updateDevicesUI();
+      
+      addEvent({
+        event: 'state:update',
+        deviceId: data.deviceId,
+        data: data.state
+      });
+    });
+    
+    socket.on('device:component', (data) => {
+      const device = devices.get(data.socketId);
+      if (device) {
+        device[data.component] = data.data;
+        device.lastSeen = new Date();
+        devices.set(data.socketId, device);
+      }
+      
+      updateDevicesUI();
+      
+      addEvent({
+        event: `${data.component}:status`,
+        deviceId: data.deviceId,
+        data: data.data
+      });
+    });
+    
+    socket.on('device:command:response', (data) => {
+      addEvent({
+        event: 'command:response',
+        deviceId: data.deviceId,
+        data: data.response
+      });
+    });
+    
+    socket.on('device:command:error', (data) => {
+      addEvent({
+        event: 'command:error',
+        deviceId: data.deviceId,
+        data: data.error
+      });
+    });
+    
+    socket.on('device:monitor:error', (data) => {
+      addEvent({
+        event: 'monitor:error',
+        deviceId: data.deviceId,
+        data: data.error
+      });
+    });
+  </script>
+</body>
+</html>

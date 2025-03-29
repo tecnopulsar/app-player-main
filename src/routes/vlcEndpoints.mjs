@@ -186,4 +186,23 @@ const uploadSnapshot = async (snapshotPath) => {
     });
 };
 
+/**
+ * @swagger
+ * /api/vlc/fullscreen:
+ *   get:
+ *     summary: Activa el modo de pantalla completa
+ */
+router.get('/fullscreen', async (req, res) => {
+    try {
+        await vlcRequest(vlcCommands.fullscreen); // Asegúrate de que vlcCommands tenga el comando para fullscreen
+        res.json({ success: true, message: 'Modo de pantalla completa activado' });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al activar el modo de pantalla completa',
+            error: error.message
+        });
+    }
+});
+
 export default router; 
