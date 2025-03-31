@@ -10,9 +10,6 @@ import { getNetworkInfo } from '../utils/networkUtils.mjs';
 // Importar el router centralizado
 import router from '../routes/index.mjs';
 
-// Importar funcionalidad Socket.IO Cliente
-import { initSocketClient, disconnectSocketClient } from '../clients/socketClient.mjs';
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 

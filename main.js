@@ -6,12 +6,10 @@ import path, { dirname } from 'path';
 import { WindowManager } from './src/windows/windowManager.js';
 import { VLCPlayer } from './src/lib/vlcPlayer.js';
 import { initAppServer, portAppServer, stopAppServer } from './src/servers/serverClient.mjs';
-import { initSocketClient, portSocket } from './src/clients/socketClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
 import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.mjs';
 import { getActivePlaylist, verifyActivePlaylistFile } from './src/utils/activePlaylist.mjs';
-import stateManager from './utils/stateManager.mjs';
-import stateSync from './utils/stateSync.mjs';
+
 
 
 // Deshabilitar la aceleración por hardware

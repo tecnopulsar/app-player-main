@@ -28,7 +28,7 @@ function generateDeviceId() {
 }
 
 // Configuración base de la aplicación
-const baseConfig = {
+export const appConfig = {
     app: {
         name: 'App Player',
         version: '1.0.0',
@@ -102,25 +102,23 @@ export async function getConfig() {
 
     // Combinar la configuración base con el estado actual
     return {
-        ...baseConfig,
+        ...appConfig,
         device: {
-            ...baseConfig.device,
+            ...appConfig.device,
             id: state.app.deviceId,
             name: state.app.deviceName,
             type: state.app.deviceType,
             group: state.app.deviceGroup
         },
         appServer: {
-            ...baseConfig.appServer,
+            ...appConfig.appServer,
             port: state.app.server.port,
             host: state.app.server.host
         },
         vlc: {
-            ...baseConfig.vlc,
+            ...appConfig.vlc,
             host: state.app.vlcConfig.host,
             port: state.app.vlcConfig.port
         }
     };
 }
-
-export { baseConfig };
