@@ -8,7 +8,7 @@ import appEndpoints from './appEndpoints.mjs';
 import fileHandler from './fileHandler.mjs';
 import defaultEndpoints from './endpoints.mjs';
 import uploadPlaylistEndpoints from './uploadPlaylistEndpoints.mjs';
-import activePlaylistEndpoints from './playlistEndpoints.mjs';
+import playlistEndpoints from './playlistEndpoints.mjs';
 import { Router } from 'express';
 
 // Crear el router principal para todas las rutas API

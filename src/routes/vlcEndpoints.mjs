@@ -27,17 +27,29 @@ export const setControllerClient = (client) => {
  */
 router.get('/status', async (req, res) => {
     try {
-        const statusXml = await vlcRequest(vlcCommands.getStatus);
-        const parsedXml = await parseStringPromise(statusXml);
-        const { state, currentplid, fullscreen, volume, length, position } = parsedXml.root;
+        const status = await vlcRequest(vlcCommands.getStatus); // Debe ser el endpoint .json
+
+        const streamVideo = status.information?.category?.["Stream 0"] || {};
+        const streamAudio = status.information?.category?.["Stream 1"] || {};
+        const meta = status.information?.category?.meta || {};
 
         res.json({
-            state: state?.[0] || 'stopped',
-            currentplid: currentplid?.[0] || '0',
-            fullscreen: fullscreen?.[0] === '1',
-            volume: volume?.[0] || '0',
-            length: length?.[0] || '0',
-            position: position?.[0] || '0',
+            success: true,
+            state: status.state || 'stopped',
+            filename: meta.filename || 'Desconocido',
+            title: meta.title || meta.filename || 'Sin título',
+            length: status.length || 0, // en segundos
+            time: status.time || 0,     // en segundos
+            position: status.position || 0, // 0 a 1
+            resolution: streamVideo["Video_resolution"] || 'Desconocido',
+            frameRate: streamVideo["Frame_rate"] || 'Desconocido',
+            videoCodec: streamVideo["Codec"] || 'Desconocido',
+            audioCodec: streamAudio["Codec"] || 'Desconocido',
+            audioBitrate: streamAudio["Bitrate"] || 'Desconocido',
+            volume: status.volume || 0,
+            fullscreen: !!status.fullscreen,
+            repeat: !!status.repeat,
+            loop: !!status.loop
         });
     } catch (error) {
         console.error(`Error fetching status: ${error.message}`);
@@ -48,6 +60,7 @@ router.get('/status', async (req, res) => {
         });
     }
 });
+
 
 /**
  * @swagger
