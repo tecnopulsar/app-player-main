@@ -27,7 +27,7 @@ function generateDeviceId() {
 }
 
 // Configuración de la aplicación
-const appConfig = {
+export const appConfig = {
     app: {
         name: 'App Player',
         version: '1.0.0',
@@ -80,9 +80,3 @@ const appConfig = {
     }
 };
 
-// Función para obtener la configuración
-export function getConfig() {
-    return appConfig;
-}
-
-export { appConfig };

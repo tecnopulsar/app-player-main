@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-04-07T13:37:24.805Z",
+  "timestamp": "2025-04-07T13:56:26.822Z",
   "system": {
     "hostname": "base",
     "platform": "linux",
@@ -7,12 +7,12 @@
     "release": "6.12.18-v8+",
     "cpus": 4,
     "totalMem": 3923357696,
-    "freeMem": 1942130688,
-    "uptime": 1939.19,
+    "freeMem": 1812250624,
+    "uptime": 3081.21,
     "loadavg": [
-      1.27,
-      1.14,
-      0.84
+      1.46,
+      1.44,
+      1.27
     ],
     "network": {
       "lo": {
@@ -34,7 +34,7 @@
         "internal": false
       }
     },
-    "timestamp": "2025-04-07T13:37:24.736Z"
+    "timestamp": "2025-04-07T13:56:26.756Z"
   },
   "storage": {
     "playlistDirectory": "./public/videos",
@@ -45,9 +45,9 @@
       "fileCount": 0
     },
     "totalSpace": 61641601024,
-    "freeSpace": 40765988864,
-    "usedSpace": 20875612160,
-    "timestamp": "2025-04-07T13:37:24.773Z"
+    "freeSpace": 40765857792,
+    "usedSpace": 20875743232,
+    "timestamp": "2025-04-07T13:56:26.784Z"
   },
   "vlc": {
     "connected": true,
@@ -55,8 +55,8 @@
     "paused": false,
     "stopped": false,
     "currentItem": "ForBiggerBlazes.mp4",
-    "position": 0.22637861967087,
-    "time": 3,
+    "position": 0.07674428075552,
+    "time": 1,
     "length": 15,
     "volume": 0,
     "random": false,
@@ -77,15 +77,20 @@
       "port": 8080
     },
     "version": "1.0.0",
-    "startTime": "2025-04-07T13:37:24.805Z",
+    "startTime": "2025-04-07T13:56:26.822Z",
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
-    "playlistName": "playlist_1742642141908",
-    "playlistPath": "public/videos/playlist_1742642141908/playlist_1742642141908.m3u",
-    "lastLoaded": "2025-03-25T16:18:43.075Z",
+    "playlistName": "Blaze",
+    "playlistPath": "public/videos/Blaze/Blaze.m3u",
+    "lastLoaded": "2025-04-07T14:17:39.361Z",
     "isActive": true,
     "currentIndex": 1,
-    "fileCount": 1
+    "fileCount": 1,
+    "isDefault": false
+  },
+  "defaultPlaylist": {
+    "playlistName": "wetechar",
+    "playlistPath": "public/videos/wetechar/wetechar.m3u"
   }
 }

@@ -2,7 +2,7 @@ import express from 'express';
 import { getSystemState } from '../utils/systemState.mjs';
 import { appConfig } from '../config/appConfig.mjs';
 import process from 'node:process';
-import { getConfig } from '../config/appConfig.mjs';
+
 
 const router = express.Router();
 
@@ -20,7 +20,6 @@ router.get('/api/app/state', async (req, res) => {
     try {
         // Obtener el estado completo del sistema
         const fullState = await getSystemState();
-        const config = getConfig();
 
         // Formatear la respuesta para controladores
         const response = {

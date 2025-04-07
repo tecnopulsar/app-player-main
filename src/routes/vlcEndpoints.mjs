@@ -7,12 +7,13 @@ import { appConfig } from '../config/appConfig.mjs';
 import axios from 'axios';
 import { Router } from 'express';
 import FormData from 'form-data';
-import { updateActivePlaylist } from '../utils/activePlaylist.mjs';
+import { STATE_FILE_PATH, updateActivePlaylist } from '../utils/activePlaylist.mjs';
 
 const router = Router();
 let controllerClient;
 
 const snapshotPath = appConfig.paths.snapshots;
+const systemStatePath = appConfig.paths.systemState;
 
 // Inicializar el cliente controlador
 export const setControllerClient = (client) => {
@@ -27,40 +28,16 @@ export const setControllerClient = (client) => {
  */
 router.get('/status', async (req, res) => {
     try {
-        const status = await vlcRequest(vlcCommands.getStatus); // Debe ser el endpoint .json
 
-        const streamVideo = status.information?.category?.["Stream 0"] || {};
-        const streamAudio = status.information?.category?.["Stream 1"] || {};
-        const meta = status.information?.category?.meta || {};
+        // 1. Obtener estado desde VLC
+        const statusJSON = await vlcRequest(vlcCommands.getStatus);
+        res.json(statusJSON);
 
-        res.json({
-            success: true,
-            state: status.state || 'stopped',
-            filename: meta.filename || 'Desconocido',
-            title: meta.title || meta.filename || 'Sin título',
-            length: status.length || 0, // en segundos
-            time: status.time || 0,     // en segundos
-            position: status.position || 0, // 0 a 1
-            resolution: streamVideo["Video_resolution"] || 'Desconocido',
-            frameRate: streamVideo["Frame_rate"] || 'Desconocido',
-            videoCodec: streamVideo["Codec"] || 'Desconocido',
-            audioCodec: streamAudio["Codec"] || 'Desconocido',
-            audioBitrate: streamAudio["Bitrate"] || 'Desconocido',
-            volume: status.volume || 0,
-            fullscreen: !!status.fullscreen,
-            repeat: !!status.repeat,
-            loop: !!status.loop
-        });
     } catch (error) {
-        console.error(`Error fetching status: ${error.message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Error al obtener el estado del reproductor',
-            error: error.message
-        });
+        const errorMessage = `Error fetching VLC status: ${error.message}`;
+        console.error(errorMessage);
     }
 });
-
 
 /**
  * @swagger
@@ -142,8 +119,27 @@ router.get('/snapshot', async (req, res) => {
         // Renombrar el archivo de captura de pantalla más reciente a "snapshot.png"
         const newSnapshotPath = renameSnapshot(recentSnapshot);
 
-        // Responder con el nombre del archivo
-        res.json({ fileName: newSnapshotPath });
+        // Leer el archivo de estado del sistema
+        const data = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
+        let systemState;
+        try {
+            systemState = JSON.parse(data);
+        } catch (parseError) {
+            return res.status(500).json({ error: 'Error al parsear el archivo JSON' });
+        }
+
+        // Actualizar la información del snapshot
+        systemState.snapshot.url = "public/snapshots/snapshot.jpg"; // Actualiza la URL según se requiera
+        systemState.snapshot.createdAt = new Date().toISOString();
+
+        // Guardar los cambios en el archivo de estado
+        await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(systemState, null, 2));
+
+        // Enviar respuesta con la información actualizada
+        res.json({
+            fileName: newSnapshotPath,
+            snapshot: systemState.snapshot
+        });
         console.log(`Snapshot del device: ${newSnapshotPath}`);
     } catch (err) {
         console.error(`Error al capturar el snapshot: ${err.message}`);
@@ -189,5 +185,24 @@ const uploadSnapshot = async (snapshotPath) => {
         headers,
     });
 };
+
+/**
+ * @swagger
+ * /api/vlc/fullscreen:
+ *   get:
+ *     summary: Activa el modo de pantalla completa
+ */
+router.get('/fullscreen', async (req, res) => {
+    try {
+        await vlcRequest(vlcCommands.fullscreen); // Asegúrate de que vlcCommands tenga el comando para fullscreen
+        res.json({ success: true, message: 'Modo de pantalla completa activado' });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al activar el modo de pantalla completa',
+            error: error.message
+        });
+    }
+});
 
 export default router; 

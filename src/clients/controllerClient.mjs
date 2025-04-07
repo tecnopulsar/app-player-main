@@ -1,21 +1,20 @@
 import { io } from 'socket.io-client';
 import { getVLCStatus, getPlaylistInfo } from '../utils/vlcStatus.js';
 import { getLocalIP, getMACAddress } from '../utils/networkUtils.mjs';
-import { getConfig } from '../config/appConfig.mjs';
+import { appConfig } from '../config/appConfig.mjs';
 import axios from 'axios';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 
 class ControllerClient {
     constructor(serverUrl = null, monitorUrl = null) {
-        const config = getConfig();
-        this.serverUrl = serverUrl || config.controller?.url || 'http://localhost:3001';
-        this.monitorUrl = monitorUrl || config.monitor?.url || 'http://localhost:3002';
+        this.serverUrl = serverUrl || appConfig.controller?.url || 'http://localhost:3001';
+        this.monitorUrl = monitorUrl || appConfig.monitor?.url || 'http://localhost:3002';
         this.socket = null;
         this.monitorSocket = null;
         this.deviceInfo = {
             id: null,
-            name: config.device?.name || null,
+            name: appConfig.device?.name || null,
             ip: getLocalIP(),
             mac: getMACAddress(),
             status: 'active',
@@ -23,12 +22,12 @@ class ControllerClient {
             playlistInfo: null,
             lastSeen: new Date().toISOString()
         };
-        this.heartbeatInterval = config.controller?.heartbeatInterval || 25000;
-        this.verboseLogs = config.controller?.verboseLogs || false;
+        this.heartbeatInterval = appConfig.controller?.heartbeatInterval || 25000;
+        this.verboseLogs = appConfig.controller?.verboseLogs || false;
         this.intervalId = null;
         this.lastHeartbeatTime = Date.now();
         this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = config.controller?.maxReconnectAttempts || 5;
+        this.maxReconnectAttempts = appConfig.controller?.maxReconnectAttempts || 5;
     }
 
     connect() {
