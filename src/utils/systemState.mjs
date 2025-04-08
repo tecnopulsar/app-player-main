@@ -405,6 +405,16 @@ export async function getSystemState() {
             };
         }
 
+        // Si no hay una propiedad defaultPlaylist, inicializamos una vacía
+        if (!systemState.defaultPlaylist) {
+            systemState.defaultPlaylist = {
+                playlistName: null,
+                playlistPath: null,
+                isDefault: true,
+                lastLoaded: null
+            };
+        }
+
         // Obtenemos el estado actual de VLC para sincronizarlo con activePlaylist
         let vlcStatus = null;
         try {
@@ -460,6 +470,11 @@ export async function getSystemState() {
             await reconstruirPathPlaylist(systemState.activePlaylist);
         }
 
+        // Aseguramos que la playlist por defecto tenga su path si tiene nombre
+        if (systemState.defaultPlaylist.playlistName && !systemState.defaultPlaylist.playlistPath) {
+            await reconstruirPathPlaylist(systemState.defaultPlaylist);
+        }
+
         // Obtener información del sistema
         const system = await getSystemInfo();
 
@@ -484,7 +499,8 @@ export async function getSystemState() {
             storage,
             vlc,
             app,
-            activePlaylist: systemState.activePlaylist
+            activePlaylist: systemState.activePlaylist,
+            defaultPlaylist: systemState.defaultPlaylist
         };
 
         return newState;
@@ -574,6 +590,55 @@ export async function saveSystemState(forceState = null) {
             }
         }
 
+        // Asegurar que defaultPlaylist tenga todos los campos necesarios y sean válidos
+        if (stateToSave.defaultPlaylist) {
+            // Si playlistPath es null pero tenemos playlistName, intentar reconstruir el path
+            if (!stateToSave.defaultPlaylist.playlistPath && stateToSave.defaultPlaylist.playlistName) {
+                console.log(`⚠️ defaultPlaylist.playlistPath es null pero tenemos playlistName. Intentando reconstruir...`);
+
+                try {
+                    // Importar appConfig para obtener las rutas
+                    const config = getConfig();
+                    const playlistsDir = config.paths.playlists;
+                    const playlistDir = config.paths.videos || 'public/videos';
+
+                    // Buscar en múltiples ubicaciones posibles
+                    const possibleLocations = [
+                        // En el directorio de playlists
+                        path.join(playlistsDir, stateToSave.defaultPlaylist.playlistName,
+                            `${stateToSave.defaultPlaylist.playlistName}.m3u`),
+                        // En el directorio de videos
+                        path.join(playlistDir, stateToSave.defaultPlaylist.playlistName,
+                            `${stateToSave.defaultPlaylist.playlistName}.m3u`)
+                    ];
+
+                    // Verificar cada ubicación posible
+                    for (const location of possibleLocations) {
+                        if (fs.existsSync(location)) {
+                            stateToSave.defaultPlaylist.playlistPath = location;
+                            console.log(`✅ Path de defaultPlaylist reconstruido antes de guardar: ${location}`);
+                            break;
+                        }
+                    }
+
+                    // Si todavía no encontramos la ruta, buscar recursivamente
+                    if (!stateToSave.defaultPlaylist.playlistPath) {
+                        const foundPath = await buscarArchivoRecursivo(
+                            playlistDir,
+                            `${stateToSave.defaultPlaylist.playlistName}.m3u`
+                        );
+
+                        if (foundPath) {
+                            stateToSave.defaultPlaylist.playlistPath = foundPath;
+                            console.log(`✅ Path de defaultPlaylist encontrado mediante búsqueda recursiva: ${foundPath}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`❌ Error al reconstruir path de defaultPlaylist: ${error.message}`);
+                }
+            }
+        }
+
         // Verificar que el directorio existe
         const dir = path.dirname(STATE_FILE_PATH);
         if (!fs.existsSync(dir)) {
@@ -588,6 +653,12 @@ export async function saveSystemState(forceState = null) {
         if (stateToSave.activePlaylist && !stateToSave.activePlaylist.playlistPath &&
             stateToSave.activePlaylist.playlistName) {
             console.warn(`⚠️ A pesar de los intentos, playlistPath sigue siendo null después de guardar`);
+        }
+
+        // Verificar después de guardar que defaultPlaylist.playlistPath no es null
+        if (stateToSave.defaultPlaylist && !stateToSave.defaultPlaylist.playlistPath &&
+            stateToSave.defaultPlaylist.playlistName) {
+            console.warn(`⚠️ A pesar de los intentos, defaultPlaylist.playlistPath sigue siendo null después de guardar`);
         }
 
         return true;

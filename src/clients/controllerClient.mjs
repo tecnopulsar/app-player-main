@@ -50,10 +50,10 @@ class ControllerClient {
     async initialize() {
         try {
             console.log('\n=== Iniciando Conexión ===');
-            
+
             await this.checkServersAvailability();
             this.setupEventHandlers();
-            
+
             console.log('==========================\n');
         } catch (error) {
             this.handleInitializationError(error);
@@ -81,8 +81,8 @@ class ControllerClient {
 
     async checkServerAvailability(url) {
         try {
-            const response = await axios.get(`${url}/health`, { 
-                timeout: this.config.connectionTimeout / 2 
+            const response = await axios.get(`${url}/health`, {
+                timeout: this.config.connectionTimeout / 2
             });
             return response.status === 200;
         } catch {
@@ -135,6 +135,61 @@ class ControllerClient {
             .on('VOLUME_DOWN', (data) => this.emitControlEvent('VOLUME_DOWN', data))
             .on('MUTE', (data) => this.emitControlEvent('MUTE', data))
             .on('UNMUTE', (data) => this.emitControlEvent('UNMUTE', data));
+
+        // Manejar eventos de control remoto
+        controller.on('remote-control', async (data) => {
+            try {
+                const { action, commandId, timestamp } = data;
+                console.log(`Recibido comando de control: ${action}`, { commandId, timestamp });
+
+                // Validar el comando
+                if (!['PLAY', 'PAUSE', 'STOP', 'NEXT', 'PREVIOUS'].includes(action)) {
+                    throw new Error(`Comando no válido: ${action}`);
+                }
+
+                // Procesar el comando
+                let success = false;
+                let error = null;
+
+                switch (action) {
+                    case 'PLAY':
+                        success = await this.emitControlEvent('play');
+                        break;
+                    case 'PAUSE':
+                        success = await this.emitControlEvent('pause');
+                        break;
+                    case 'STOP':
+                        success = await this.emitControlEvent('stop');
+                        break;
+                    case 'NEXT':
+                        success = await this.emitControlEvent('next');
+                        break;
+                    case 'PREVIOUS':
+                        success = await this.emitControlEvent('previous');
+                        break;
+                }
+
+                // Enviar confirmación
+                controller.emit('command_received', {
+                    success,
+                    commandId,
+                    error: error?.message,
+                    timestamp: new Date().toISOString()
+                });
+
+                if (!success) {
+                    console.error(`Error al ejecutar comando ${action}:`, error);
+                }
+            } catch (error) {
+                console.error('Error al procesar comando de control:', error);
+                controller.emit('command_received', {
+                    success: false,
+                    commandId: data.commandId,
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        });
     }
 
     setupMonitorEvents() {
@@ -184,10 +239,30 @@ class ControllerClient {
         this.reconnectMonitor();
     }
 
-    emitControlEvent(action, data) {
-        this.log(`Evento ${action} recibido`, data);
-        // Enviar evento a la aplicación principal si está definida
-        global.mainWindow?.webContents.send('remote-control', { action, data });
+    async emitControlEvent(event, data = {}) {
+        try {
+            const { controller } = this.state.sockets;
+            if (!controller?.connected) {
+                throw new Error('No hay conexión con el controlador');
+            }
+
+            // Emitir el evento al controlador
+            controller.emit(event, {
+                ...data,
+                deviceId: this.state.deviceInfo.id,
+                timestamp: new Date().toISOString()
+            });
+
+            // Actualizar el estado local si es necesario
+            if (['PLAY', 'PAUSE', 'STOP'].includes(event)) {
+                this.state.vlcData.status = event.toLowerCase();
+            }
+
+            return true;
+        } catch (error) {
+            console.error(`Error al emitir evento de control ${event}:`, error);
+            return false;
+        }
     }
 
     // Heartbeat y estado
@@ -195,7 +270,7 @@ class ControllerClient {
         if (this.state.intervals.heartbeat) return;
 
         this.log(`Iniciando heartbeat (intervalo: ${this.config.heartbeatInterval}ms)`);
-        
+
         this.state.intervals.heartbeat = setInterval(async () => {
             await this.sendHeartbeat();
         }, this.config.heartbeatInterval);
@@ -206,7 +281,7 @@ class ControllerClient {
 
     async sendHeartbeat() {
         const { controller, monitor } = this.state.sockets;
-        
+
         if (!controller?.connected) {
             this.logWarning('No se pudo enviar heartbeat: Socket no conectado');
             this.reconnectController();
@@ -253,7 +328,7 @@ class ControllerClient {
 
     prepareHeartbeatData(snapshot) {
         this.updateDeviceStatus('active');
-        
+
         return {
             ...this.state.deviceInfo,
             timestamp: new Date().toISOString(),
@@ -265,7 +340,7 @@ class ControllerClient {
     async getSnapshot() {
         try {
             const response = await axios.get('http://localhost:3000/api/vlc/snapshot');
-            
+
             if (response.data.success) {
                 const imageBuffer = await fsPromises.readFile(response.data.snapshotPath);
                 return `data:image/png;base64,${imageBuffer.toString('base64')}`;
@@ -366,7 +441,7 @@ class ControllerClient {
 
     disconnect() {
         this.stopHeartbeat();
-        
+
         Object.values(this.state.sockets).forEach(socket => {
             if (socket) {
                 socket.disconnect();

@@ -295,6 +295,75 @@ ipcMain.on('start-vlc-with-playlist', async (event, data) => {
   }
 });
 
+// Manejar eventos de control remoto
+ipcMain.on('remote-control', async (event, { action, data }) => {
+  console.log(`📣 Evento de control remoto recibido: ${action}`, data);
+
+  if (!vlcPlayer) {
+    console.warn('⚠️ No se puede ejecutar comando: VLC no está inicializado');
+    return;
+  }
+
+  try {
+    let success = false;
+    let message = '';
+
+    switch (action) {
+      case 'PLAY':
+        success = await vlcPlayer.play();
+        message = success ? 'Reproducción iniciada' : 'Error al iniciar reproducción';
+        break;
+      case 'PAUSE':
+        success = await vlcPlayer.pause();
+        message = success ? 'Reproducción pausada' : 'Error al pausar reproducción';
+        break;
+      case 'STOP':
+        success = await vlcPlayer.stop();
+        message = success ? 'Reproducción detenida' : 'Error al detener reproducción';
+        break;
+      case 'NEXT':
+        success = await vlcPlayer.next();
+        message = success ? 'Siguiente elemento' : 'Error al avanzar al siguiente elemento';
+        break;
+      case 'PREVIOUS':
+        success = await vlcPlayer.previous();
+        message = success ? 'Elemento anterior' : 'Error al retroceder al elemento anterior';
+        break;
+      case 'VOLUME_UP':
+        success = await vlcPlayer.volumeUp();
+        message = success ? 'Volumen aumentado' : 'Error al aumentar volumen';
+        break;
+      case 'VOLUME_DOWN':
+        success = await vlcPlayer.volumeDown();
+        message = success ? 'Volumen disminuido' : 'Error al disminuir volumen';
+        break;
+      case 'MUTE':
+        success = await vlcPlayer.mute();
+        message = success ? 'Sonido silenciado' : 'Error al silenciar sonido';
+        break;
+      case 'UNMUTE':
+        success = await vlcPlayer.unmute();
+        message = success ? 'Sonido activado' : 'Error al activar sonido';
+        break;
+      default:
+        console.warn(`⚠️ Comando desconocido: ${action}`);
+        return;
+    }
+
+    console.log(`✅ Comando ${action} ejecutado: ${message}`);
+    sendLog(`Comando ${action}: ${message}`, success ? 'success' : 'error');
+
+    // Actualizar estado de VLC después de ejecutar el comando
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const vlcStatus = await getVLCStatus();
+      mainWindow.webContents.send('vlc-status-update', { vlcStatus });
+    }
+  } catch (error) {
+    console.error(`❌ Error al ejecutar comando ${action}:`, error);
+    sendLog(`Error al ejecutar comando ${action}: ${error.message}`, 'error');
+  }
+});
+
 // En el evento 'will-quit' o 'before-quit', detener el monitor de estado
 app.on('will-quit', () => {
   console.log('🛑 Deteniendo servicios antes de cerrar la aplicación...');

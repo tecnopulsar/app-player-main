@@ -91,13 +91,20 @@ router.get('/all', async (req, res) => {
  * @swagger
  * /api/active-playlist/purge:
  *   delete:
- *     summary: Elimina todas las playlists (excepto la activa si se especifica)
- *     parameters:
- *       - in: query
- *         name: keepActive
- *         schema:
- *           type: boolean
- *         description: Si se debe mantener la playlist activa actual
+ *     summary: Elimina todas las playlists (excepto la activa y por defecto si se especifica)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               keepActive:
+ *                 type: boolean
+ *                 description: Si se debe mantener la playlist activa actual
+ *               keepDefault:
+ *                 type: boolean
+ *                 description: Si se debe mantener la playlist por defecto
  *     responses:
  *       200:
  *         description: Resultado de la operación de eliminación
@@ -106,15 +113,20 @@ router.get('/all', async (req, res) => {
  */
 router.delete('/all', async (req, res) => {
     try {
-        const { keepActive } = req.query;
+        const { keepActive = true, keepDefault = true } = req.body;
         const config = getConfig();
         const playlistsDir = config.paths.playlists;
 
-        // Obtener playlist activa actual si keepActive es true
-        let activePlaylistPath = null;
-        if (keepActive === 'true') {
-            const activePlaylist = await getActivePlaylist();
-            activePlaylistPath = activePlaylist?.playlistPath;
+        // Obtener playlists protegidas
+        const activePlaylist = await getActivePlaylist();
+        const defaultPlaylist = await getDefaultPlaylist();
+
+        const protectedPaths = [];
+        if (keepActive && activePlaylist?.playlistPath) {
+            protectedPaths.push(activePlaylist.playlistPath);
+        }
+        if (keepDefault && defaultPlaylist?.playlistPath) {
+            protectedPaths.push(defaultPlaylist.playlistPath);
         }
 
         // Leer todas las playlists
@@ -128,9 +140,14 @@ router.delete('/all', async (req, res) => {
                     const playlistName = dirent.name;
                     const playlistPath = path.join(playlistsDir, playlistName, `${playlistName}.m3u`);
 
-                    // Verificar si debemos saltar la playlist activa
-                    if (activePlaylistPath && playlistPath === activePlaylistPath) {
-                        return { name: playlistName, status: 'kept', reason: 'active playlist' };
+                    // Verificar si es una playlist protegida
+                    if (protectedPaths.includes(playlistPath)) {
+                        return {
+                            name: playlistName,
+                            status: 'kept',
+                            reason: playlistPath === activePlaylist?.playlistPath ?
+                                'active playlist' : 'default playlist'
+                        };
                     }
 
                     try {
@@ -175,66 +192,91 @@ router.delete('/all', async (req, res) => {
     }
 });
 
-
 /**
  * @swagger
- * /api/playlist/delete/{playlistName}:
+ * /api/playlist/delete:
  *   delete:
- *     summary: Elimina una playlist específica según el nombre proporcionado en la URL
- *     parameters:
- *       - in: path
- *         name: playlistName
- *         required: true
- *         schema:
- *           type: string
- *         description: Nombre de la playlist a eliminar
+ *     summary: Elimina una playlist específica según el nombre proporcionado en el body
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               playlistName:
+ *                 type: string
+ *                 description: Nombre de la playlist a eliminar
  *     responses:
  *       200:
  *         description: Playlist eliminada con éxito
  *       400:
- *         description: No se puede eliminar la playlist activa
+ *         description: No se puede eliminar la playlist activa o por defecto
  *       404:
  *         description: Playlist no encontrada
  *       500:
  *         description: Error interno al eliminar la playlist
  */
-router.delete('/:playlistName', async (req, res) => {
+router.delete('/delete', async (req, res) => {
     try {
-        const { playlistName } = req.params;
+        const { playlistName } = req.body;
 
         if (!playlistName) {
-            return res.status(400).json({ success: false, message: 'Se requiere el nombre de la playlist en la URL' });
+            return res.status(400).json({
+                success: false,
+                message: 'Se requiere el nombre de la playlist'
+            });
         }
 
         const config = getConfig();
-        const playlistDir = path.join(config.paths.playlists, playlistName);
+        const playlistsDir = config.paths.playlists;
+        const playlistPath = path.join(playlistsDir, playlistName, `${playlistName}.m3u`);
 
-        // Verificar si la carpeta de la playlist existe
+        // Verificar si la playlist existe
         try {
-            await fsPromises.access(playlistDir);
+            await fsPromises.access(playlistPath);
         } catch {
-            return res.status(404).json({ success: false, message: `Playlist '${playlistName}' no encontrada` });
+            return res.status(404).json({
+                success: false,
+                message: `Playlist "${playlistName}" no encontrada`
+            });
         }
 
         // Verificar si es la playlist activa
         const activePlaylist = await getActivePlaylist();
-        if (activePlaylist?.playlistName === playlistName) {
-            return res.status(400).json({ success: false, message: 'No se puede eliminar la playlist activa' });
+        if (activePlaylist?.playlistPath === playlistPath) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se puede eliminar la playlist activa'
+            });
         }
 
         // Verificar si es la playlist por defecto
         const defaultPlaylist = await getDefaultPlaylist();
-        if (defaultPlaylist?.playlistName === playlistName) {
-            return res.status(400).json({ success: false, message: 'No se puede eliminar la playlist por defecto' });
+        if (defaultPlaylist?.playlistPath === playlistPath) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se puede eliminar la playlist por defecto'
+            });
         }
 
-        // Eliminar la carpeta de la playlist
-        await fsPromises.rm(playlistDir, { recursive: true, force: true });
+        // Eliminar la playlist
+        await fsPromises.rm(path.join(playlistsDir, playlistName), {
+            recursive: true,
+            force: true
+        });
 
-        res.json({ success: true, message: `Playlist '${playlistName}' eliminada correctamente` });
+        res.json({
+            success: true,
+            message: `Playlist "${playlistName}" eliminada correctamente`
+        });
     } catch (error) {
-        console.error(`❌ Error al eliminar playlist: ${error.message}`);
-        res.status(500).json({ success: false, message: 'Error al eliminar la playlist', error: error.message });
+        console.error('Error al eliminar la playlist:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al eliminar la playlist',
+            error: error.message
+        });
     }
 });
 
