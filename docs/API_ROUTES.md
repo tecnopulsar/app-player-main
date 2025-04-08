@@ -730,15 +730,15 @@ import DeviceClient from './src/clients/deviceClient.mjs';
 
 // Crear y conectar un cliente de controlador
 const controllerClient = new ControllerClient();
-controllerClient.connect();
+controllerClient.initialize();
 
 // O crear un cliente de dispositivo simple
 const deviceClient = new DeviceClient();
-deviceClient.connect();
+deviceClient.initialize();
 
 // Enviar un evento de estado manualmente
 controllerClient.sendStatus('active');
 
 // Desconectar cuando sea necesario
 controllerClient.disconnect();
-``` 
+```

@@ -51,8 +51,10 @@ import path from 'path';
 import os from 'os';
 import axios from 'axios';
 import { getActivePlaylist } from './activePlaylist.mjs';
+import { appConfig } from '../config/appConfig.mjs';
 // Rutas de archivos de estado
 const STATE_FILE_PATH = path.join(process.cwd(), 'src/config/systemState.json');
+const getConfig = () => appConfig;
 
 // Función para obtener información del sistema
 async function getSystemInfo() {

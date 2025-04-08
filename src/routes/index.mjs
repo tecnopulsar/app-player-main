@@ -6,7 +6,7 @@ import systemEndpoints from './systemEndpoints.mjs';
 import vlcEndpoints from './vlcEndpoints.mjs';
 import appEndpoints from './appEndpoints.mjs';
 import fileHandler from './fileHandler.mjs';
-import defaultEndpoints from './endpoints.mjs';
+import endpoints from './endpoints.mjs';
 import uploadPlaylistEndpoints from './uploadPlaylistEndpoints.mjs';
 import playlistEndpoints from './playlistEndpoints.mjs';
 import { Router } from 'express';
@@ -23,7 +23,7 @@ router.get('/health', (req, res) => {
 });
 
 // Configurar todas las rutas con sus prefijos correspondientes
-router.use('/', defaultEndpoints);           // Endpoints generales y raíz
+router.use('/', endpoints);           // Endpoints generales y raíz
 router.use('/system', systemEndpoints);      // Control del sistema
 router.use('/upload-playlist', uploadPlaylistEndpoints); // Gestión uploads de playlists
 router.use('/vlc', vlcEndpoints);            // Control de VLC

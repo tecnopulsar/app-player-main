@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emulador de Controlador</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Emulador de Controlador</h1>
+            <p>Servidor de depuración para probar la comunicación con
+                dispositivos</p>
+        </header>
+
+        <main>
+            <section class="devices-section">
+                <h2>Dispositivos Conectados</h2>
+                <div class="refresh-container">
+                    <button id="refresh-devices" class="btn">Actualizar
+                        Lista</button>
+                    <span id="last-update" class="last-update"></span>
+                </div>
+                <div id="devices-list" class="devices-list">
+                    <p class="no-devices">No hay dispositivos conectados</p>
+                </div>
+            </section>
+
+            <section class="control-section">
+                <h2>Control de Dispositivo</h2>
+                <div class="device-selector">
+                    <label for="device-select">Seleccionar Dispositivo:</label>
+                    <select id="device-select" disabled>
+                        <option value="">-- Seleccionar --</option>
+                    </select>
+                </div>
+
+                <div class="command-panel">
+                    <h3>Comandos de Reproducción</h3>
+                    <div class="command-buttons">
+                        <button class="btn command-btn"
+                            data-action="PLAY">Reproducir</button>
+                        <button class="btn command-btn"
+                            data-action="PAUSE">Pausar</button>
+                        <button class="btn command-btn"
+                            data-action="STOP">Detener</button>
+                        <button class="btn command-btn"
+                            data-action="NEXT">Siguiente</button>
+                        <button class="btn command-btn"
+                            data-action="PREVIOUS">Anterior</button>
+                    </div>
+
+                    <h3>Control de Volumen</h3>
+                    <div class="command-buttons">
+                        <button class="btn command-btn"
+                            data-action="VOLUME_UP">Subir Volumen</button>
+                        <button class="btn command-btn"
+                            data-action="VOLUME_DOWN">Bajar Volumen</button>
+                        <button class="btn command-btn"
+                            data-action="MUTE">Silenciar</button>
+                        <button class="btn command-btn"
+                            data-action="UNMUTE">Activar Sonido</button>
+                    </div>
+                </div>
+
+                <div class="device-info">
+                    <h3>Información del Dispositivo</h3>
+                    <div id="device-details" class="device-details">
+                        <p>Selecciona un dispositivo para ver su información</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Emulador de Controlador - Puerto 3001</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

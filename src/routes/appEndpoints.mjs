@@ -16,7 +16,7 @@ const router = express.Router();
  *       200:
  *         description: Estado del dispositivo
  */
-router.get('/api/app/state', async (req, res) => {
+router.get('/state', async (req, res) => {
     try {
         // Obtener el estado completo del sistema
         const fullState = await getSystemState();

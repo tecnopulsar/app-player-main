@@ -24,7 +24,7 @@ const router = express.Router();
  *       200:
  *         description: Información del sistema
  */
-router.get('/api/system/info', async (req, res) => {
+router.get('/info', async (req, res) => {
     try {
         const systemInfo = await getSystemInfo();
         const networkInterfaces = getNetworkInterfaces();
@@ -63,7 +63,7 @@ router.get('/api/system/info', async (req, res) => {
  *       200:
  *         description: Estado completo del sistema
  */
-router.get('/api/system/state', async (req, res) => {
+router.get('/state', async (req, res) => {
     try {
         const state = await getSystemState();
 
@@ -93,7 +93,7 @@ router.get('/api/system/state', async (req, res) => {
  *       500:
  *         description: Error al guardar el estado
  */
-router.post('/api/system/state/save', async (req, res) => {
+router.post('/state/save', async (req, res) => {
     try {
         const state = await saveSystemState();
 
@@ -146,15 +146,6 @@ router.post('/reboot', async (req, res) => {
         console.error('Error al reiniciar el sistema:', error);
         res.status(500).json({ error: 'Error al reiniciar el sistema', details: error.message });
     }
-});
-
-// Endpoint para obtener información del sistema
-router.get('/system-info', (req, res) => {
-    res.json({
-        version: appConfig.app.version,
-        name: appConfig.app.name,
-        uptime: process.uptime()
-    });
 });
 
 // Función auxiliar para obtener interfaces de red (solo IPv4)

@@ -9,6 +9,8 @@ import { appConfig } from './src/config/appConfig.mjs';
 import { initializeServer, stopServer } from './src/servers/serverClient.mjs';
 import { setupDirectories } from './src/utils/setupDirectories.js';
 import ControllerClient from './src/clients/controllerClient.mjs';
+import { getNetworkInfo } from './src/utils/networkUtils.mjs';
+
 import { getVLCStatus } from './src/utils/vlcStatus.js';
 import { initLogs, sendLog, restoreLogs } from './src/utils/logUtils.mjs';
 import { setControllerClient } from './src/routes/vlcEndpoints.mjs';
@@ -64,13 +66,13 @@ async function createWindow() {
       console.log('ℹ️ Continuando sin cargar playlist ni iniciar VLC...');
     }
 
-    // Inicializar el cliente de controlador
+    // Inicializar el cliente de controlador por Socket en tiempo real
     console.log('\n=== Iniciando Cliente de Controlador ===');
     // Obtener URLs desde la configuración
     const controllerUrl = appConfig.controller?.url || 'http://localhost:3001';
     const monitorUrl = appConfig.monitor?.url || 'http://localhost:3002';
     controllerClient = new ControllerClient(controllerUrl, monitorUrl);
-    controllerClient.connect();
+    controllerClient.initialize();
 
     // Configurar el cliente controlador para los endpoints de VLC
     setControllerClient(controllerClient);
