@@ -37,7 +37,8 @@ class ControllerClient {
             },
             reconnectAttempts: 0,
             intervals: {
-                heartbeat: null
+                heartbeat: null,
+                reconnectCheck: null
             }
         };
     }
@@ -53,6 +54,12 @@ class ControllerClient {
 
             await this.checkServersAvailability();
             this.setupEventHandlers();
+
+            // Si el servidor controlador no está disponible, iniciar el proceso de reconexión
+            if (!this.state.sockets.controller?.connected) {
+                console.log('⚠️ Servidor controlador no disponible al inicio. Iniciando proceso de reconexión...');
+                this.reconnectController();
+            }
 
             console.log('==========================\n');
         } catch (error) {
@@ -70,6 +77,8 @@ class ControllerClient {
             this.connectToController();
         } else {
             console.warn(`⚠️ Servidor controlador no disponible en ${this.config.serverUrl}`);
+            // Iniciar el proceso de reconexión para el controlador
+            this.reconnectController();
         }
 
         if (monitorAvailable) {
@@ -231,12 +240,19 @@ class ControllerClient {
     }
 
     handleMonitorDisconnect() {
-        this.logDisconnection('Monitor');
+        if (this.state.reconnectAttempts < this.config.maxReconnectAttempts) {
+            this.state.reconnectAttempts++;
+            console.log(`🔄 Intento de reconexión ${this.state.reconnectAttempts}/${this.config.maxReconnectAttempts}`);
+            setTimeout(() => this.connectToMonitor(), this.config.reconnectDelay);
+        } else {
+            console.error('❌ Máximo de intentos de reconexión para monitor alcanzado');
+            // Aquí podrías implementar una lógica adicional para manejar el fallo permanente
+        }
     }
 
     handleMonitorError(error) {
-        this.logError('Monitor', error);
-        this.reconnectMonitor();
+        console.error('❌ Error en la conexión con el monitor:', error?.message || 'Error desconocido');
+        this.handleMonitorDisconnect();
     }
 
     async emitControlEvent(event, data = {}) {
@@ -283,8 +299,7 @@ class ControllerClient {
         const { controller, monitor } = this.state.sockets;
 
         if (!controller?.connected) {
-            this.logWarning('No se pudo enviar heartbeat: Socket no conectado');
-            this.reconnectController();
+            console.warn('⚠️ No se pudo enviar heartbeat: Socket no conectado');
             return;
         }
 
@@ -306,7 +321,10 @@ class ControllerClient {
 
             this.logHeartbeat(heartbeatData);
         } catch (error) {
-            this.logError('Error en heartbeat', error);
+            console.error('❌ Error en heartbeat:', error?.message || 'Error desconocido');
+            if (error?.message) {
+                console.error('Detalles del error:', error.message);
+            }
         }
     }
 
@@ -317,46 +335,88 @@ class ControllerClient {
                 playlist: await getPlaylistInfo()
             };
         } catch (error) {
+            console.error('❌ Error al actualizar estado de VLC:', error?.message || 'Error desconocido');
             this.state.vlcData.status = {
                 status: 'error',
                 connected: false,
-                error: error.message
+                error: error?.message || 'Error desconocido'
             };
             throw error;
         }
-    }
-
-    prepareHeartbeatData(snapshot) {
-        this.updateDeviceStatus('active');
-
-        return {
-            ...this.state.deviceInfo,
-            timestamp: new Date().toISOString(),
-            vlc: this.state.vlcData,
-            snapshot
-        };
     }
 
     async getSnapshot() {
         try {
             const response = await axios.get('http://localhost:3000/api/vlc/snapshot');
 
-            if (response.data.success) {
-                const imageBuffer = await fsPromises.readFile(response.data.snapshotPath);
-                return `data:image/png;base64,${imageBuffer.toString('base64')}`;
+            // Verificar si la respuesta tiene el formato esperado
+            const snapshotPath = response.data?.snapshotPath || response.data?.fileName;
+
+            if (snapshotPath) {
+                try {
+                    // Intentar leer el archivo
+                    const imageBuffer = await fsPromises.readFile(snapshotPath);
+                    return `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
+                } catch (error) {
+                    console.error('❌ Error al leer el archivo de snapshot:', error?.message || 'Error desconocido');
+
+                    // Si no se puede leer el archivo, intentar usar la URL directamente
+                    if (response.data?.snapshot?.url) {
+                        console.log(`ℹ️ Usando URL del snapshot: ${response.data.snapshot.url}`);
+                        return response.data.snapshot.url;
+                    }
+
+                    return null;
+                }
+            } else {
+                console.warn('⚠️ No se pudo obtener el snapshot: No se encontró la ruta del archivo en la respuesta');
+                return null;
             }
-            return null;
         } catch (error) {
-            if (this.config.verboseLogs) {
-                this.logError('Error al obtener snapshot', error);
+            if (error.response) {
+                console.error(`❌ Error al obtener snapshot (${error.response.status}):`, error.response.data?.message || 'Error desconocido');
+            } else {
+                console.error('❌ Error al obtener snapshot:', error?.message || 'Error desconocido');
             }
             return null;
         }
     }
 
+    prepareHeartbeatData(snapshot) {
+        this.updateDeviceStatus('active');
+
+        const heartbeatData = {
+            ...this.state.deviceInfo,
+            timestamp: new Date().toISOString(),
+            vlc: this.state.vlcData,
+            snapshot: snapshot || null
+        };
+
+        return heartbeatData;
+    }
+
     // Reconexión
     reconnectController() {
         this.handleReconnection('controller', () => this.connectToController());
+
+        // Iniciar un intervalo de verificación periódica si no está activo
+        if (!this.state.intervals.reconnectCheck) {
+            console.log('🔄 Iniciando verificación periódica de disponibilidad del servidor controlador');
+            this.state.intervals.reconnectCheck = setInterval(async () => {
+                // Verificar si el servidor está disponible
+                const isAvailable = await this.checkServerAvailability(this.config.serverUrl);
+
+                if (isAvailable) {
+                    // Si el servidor está disponible y no estamos conectados, intentar reconectar
+                    if (!this.state.sockets.controller?.connected) {
+                        console.log('✅ Servidor controlador disponible. Intentando reconectar...');
+                        this.connectToController();
+                    }
+                } else {
+                    console.log('⚠️ Servidor controlador aún no disponible. Seguirá intentando...');
+                }
+            }, 30000); // Verificar cada 30 segundos
+        }
     }
 
     reconnectMonitor() {
@@ -366,6 +426,13 @@ class ControllerClient {
     handleReconnection(type, connectFn) {
         if (this.state.reconnectAttempts >= this.config.maxReconnectAttempts) {
             this.logError(`Máximo de intentos de reconexión para ${type} alcanzado`);
+
+            // Si es el controlador, mantener el intervalo de verificación periódica
+            if (type === 'controller') {
+                console.log('ℹ️ Se mantendrá la verificación periódica de disponibilidad del servidor');
+                return;
+            }
+
             return;
         }
 

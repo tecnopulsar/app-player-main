@@ -179,6 +179,10 @@ export async function verifyActivePlaylistFile() {
                 defaultPlaylist: {
                     playlistName: null,
                     playlistPath: null
+                },
+                snapshot: {
+                    url: null,
+                    createdAt: null
                 }
             };
 
@@ -213,6 +217,16 @@ export async function verifyActivePlaylistFile() {
             jsonData.defaultPlaylist = {
                 playlistName: null,
                 playlistPath: null
+            };
+            needsUpdate = true;
+        }
+
+        // Verificar que exista la propiedad snapshot
+        if (!jsonData.snapshot) {
+            console.log('⚠️ Estructura de snapshot no encontrada. Inicializando...');
+            jsonData.snapshot = {
+                url: null,
+                createdAt: null
             };
             needsUpdate = true;
         }

@@ -3,6 +3,7 @@ import { parseStringPromise } from 'xml2js';
 import { appConfig } from '../config/appConfig.mjs';
 import fs from 'fs/promises';
 import path from 'path';
+import { getSystemState } from './systemState.mjs';
 
 // Configuración para la API de VLC
 const VLC_HOST = 'localhost';
@@ -63,11 +64,34 @@ export async function getVLCStatus() {
  */
 export async function getPlaylistInfo() {
     try {
-        // Obtener la ruta de la playlist actual CORREGIR
-        const playlistPath = path.join(appConfig.paths.playlists, 'playlistDefecto', 'playlistDefecto.m3u');
+        // Obtener la playlist activa del systemState
+        const systemState = await getSystemState();
+        if (!systemState?.activePlaylist?.playlistPath) {
+            console.warn('⚠️ No hay playlist activa configurada en systemState');
+            return {
+                name: 'Desconocida',
+                path: null,
+                files: [],
+                totalItems: 0,
+                currentIndex: 0
+            };
+        }
+
+        const playlistPath = systemState.activePlaylist.playlistPath;
 
         // Verificar que el archivo existe
-        await fs.access(playlistPath);
+        try {
+            await fs.access(playlistPath);
+        } catch (error) {
+            console.error(`❌ No se puede acceder a la playlist: ${playlistPath}`);
+            return {
+                name: systemState.activePlaylist.playlistName,
+                path: playlistPath,
+                files: [],
+                totalItems: 0,
+                currentIndex: systemState.activePlaylist.currentIndex || 0
+            };
+        }
 
         // Leer el contenido de la playlist
         const playlistContent = await fs.readFile(playlistPath, 'utf8');
@@ -79,18 +103,20 @@ export async function getPlaylistInfo() {
             .map(line => path.basename(line.trim()));
 
         return {
-            name: 'playlistDefecto',
+            name: systemState.activePlaylist.playlistName,
             path: playlistPath,
             files,
-            totalItems: files.length
+            totalItems: files.length,
+            currentIndex: systemState.activePlaylist.currentIndex || 0
         };
     } catch (error) {
-        console.error('Error al obtener información de la playlist:', error.message);
+        console.error('❌ Error al obtener información de la playlist:', error.message);
         return {
             name: 'Desconocida',
             path: null,
             files: [],
-            totalItems: 0
+            totalItems: 0,
+            currentIndex: 0
         };
     }
 } 

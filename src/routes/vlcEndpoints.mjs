@@ -7,7 +7,7 @@ import { appConfig } from '../config/appConfig.mjs';
 import axios from 'axios';
 import { Router } from 'express';
 import FormData from 'form-data';
-import { STATE_FILE_PATH, updateActivePlaylist } from '../utils/activePlaylist.mjs';
+import { STATE_FILE_PATH } from '../utils/activePlaylist.mjs';
 
 const router = Router();
 let controllerClient;
@@ -107,17 +107,56 @@ router.get('/snapshot', async (req, res) => {
 
     try {
         // Capturar el snapshot
-        await vlcRequest(vlcCommands.snapshot);
+        try {
+            await vlcRequest(vlcCommands.snapshot);
+            console.log('✅ Comando de snapshot enviado a VLC');
+        } catch (vlcError) {
+            console.error(`❌ Error al enviar comando de snapshot a VLC: ${vlcError.message}`);
+
+            // Si hay un error específico de VLC, intentar una solución alternativa
+            if (vlcError.message.includes('Failed to create video converter')) {
+                console.log('⚠️ Error de conversor de video. Intentando solución alternativa...');
+
+                // Esperar un momento para que VLC termine de procesar
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Intentar nuevamente
+                try {
+                    await vlcRequest(vlcCommands.snapshot);
+                    console.log('✅ Comando de snapshot enviado a VLC (segundo intento)');
+                } catch (retryError) {
+                    console.error(`❌ Error en segundo intento de snapshot: ${retryError.message}`);
+                    // Continuar con el proceso aunque haya error
+                }
+            }
+        }
+
+        // Esperar un momento para que VLC genere el archivo
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // Obtener la captura de pantalla más reciente
         const recentSnapshot = getMostRecentSnapshot();
         if (!recentSnapshot) {
             return res
                 .status(404)
-                .send("No se encontró un archivo de captura de pantalla.");
+                .json({
+                    success: false,
+                    error: "No se encontró un archivo de captura de pantalla.",
+                    message: "VLC no generó un archivo de snapshot o no se pudo acceder al directorio."
+                });
         }
-        // Renombrar el archivo de captura de pantalla más reciente a "snapshot.png"
+
+        // Renombrar el archivo de captura de pantalla más reciente a "snapshot.jpg"
         const newSnapshotPath = renameSnapshot(recentSnapshot);
+        if (!newSnapshotPath) {
+            return res
+                .status(500)
+                .json({
+                    success: false,
+                    error: "Error al renombrar el archivo de snapshot.",
+                    message: "No se pudo renombrar el archivo de snapshot."
+                });
+        }
 
         // Leer el archivo de estado del sistema
         const data = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
@@ -125,7 +164,11 @@ router.get('/snapshot', async (req, res) => {
         try {
             systemState = JSON.parse(data);
         } catch (parseError) {
-            return res.status(500).json({ error: 'Error al parsear el archivo JSON' });
+            return res.status(500).json({
+                success: false,
+                error: 'Error al parsear el archivo JSON',
+                message: parseError.message
+            });
         }
 
         // Actualizar la información del snapshot
@@ -135,15 +178,24 @@ router.get('/snapshot', async (req, res) => {
         // Guardar los cambios en el archivo de estado
         await fsPromises.writeFile(STATE_FILE_PATH, JSON.stringify(systemState, null, 2));
 
+        // // Limpiar snapshots anteriores
+        // await cleanOldSnapshots();
+
         // Enviar respuesta con la información actualizada
         res.json({
+            success: true,
+            snapshotPath: newSnapshotPath,
             fileName: newSnapshotPath,
             snapshot: systemState.snapshot
         });
         console.log(`Snapshot del device: ${newSnapshotPath}`);
     } catch (err) {
         console.error(`Error al capturar el snapshot: ${err.message}`);
-        res.status(500).send(`Error al capturar el snapshot: ${err.message}`);
+        res.status(500).json({
+            success: false,
+            error: `Error al capturar el snapshot: ${err.message}`,
+            message: err.message
+        });
     }
 });
 
@@ -151,25 +203,87 @@ router.get('/snapshot', async (req, res) => {
  * Obtiene el archivo de captura de pantalla más reciente en el directorio.
  */
 const getMostRecentSnapshot = () => {
-    const files = fs.readdirSync(snapshotPath);
-    return files
-        .filter((file) => file.endsWith(".jpg"))
-        .map((file) => ({
-            file,
-            time: fs.statSync(path.join(snapshotPath, file)).mtime.getTime(),
-        }))
-        .sort((a, b) => b.time - a.time)[0]?.file;
+    try {
+        // Asegurarse de que el directorio de snapshots exista
+        if (!fs.existsSync(snapshotPath)) {
+            fs.mkdirSync(snapshotPath, { recursive: true });
+            console.log(`✅ Directorio de snapshots creado: ${snapshotPath}`);
+            return null;
+        }
+
+        const files = fs.readdirSync(snapshotPath);
+
+        // Si no hay archivos, devolver null
+        if (files.length === 0) {
+            console.warn(`⚠️ No hay archivos de snapshot en el directorio: ${snapshotPath}`);
+            return null;
+        }
+
+        // Filtrar archivos .jpg y .png
+        const snapshotFiles = files
+            .filter((file) => file.endsWith(".jpg") || file.endsWith(".png"))
+            .map((file) => ({
+                file,
+                time: fs.statSync(path.join(snapshotPath, file)).mtime.getTime(),
+            }));
+
+        // Si no hay archivos de snapshot, devolver null
+        if (snapshotFiles.length === 0) {
+            console.warn(`⚠️ No hay archivos de snapshot (.jpg o .png) en el directorio: ${snapshotPath}`);
+            return null;
+        }
+
+        // Ordenar por fecha de modificación (más reciente primero)
+        snapshotFiles.sort((a, b) => b.time - a.time);
+
+        console.log(`✅ Snapshot más reciente encontrado: ${snapshotFiles[0].file}`);
+        return snapshotFiles[0].file;
+    } catch (error) {
+        console.error(`❌ Error al obtener el snapshot más reciente: ${error.message}`);
+        return null;
+    }
 };
 
 /**
  * Renombra la captura de pantalla más reciente a "snapshot.png".
  */
 const renameSnapshot = (snapshotFileName) => {
+    // Asegurarse de que el directorio de snapshots exista
+    if (!fs.existsSync(snapshotPath)) {
+        fs.mkdirSync(snapshotPath, { recursive: true });
+        console.log(`✅ Directorio de snapshots creado: ${snapshotPath}`);
+    }
+
     const oldPath = path.join(snapshotPath, snapshotFileName);
     const newPath = path.join(snapshotPath, "snapshot.jpg");
-    fs.renameSync(oldPath, newPath);
-    return newPath;
+
+    // Si ya tiene el nombre correcto, no es necesario renombrar
+    if (snapshotFileName === "snapshot.jpg") {
+        console.log("ℹ️ El snapshot ya tiene el nombre 'snapshot.jpg', no se renombra.");
+        return newPath;
+    }
+
+    // Verificar que el archivo original existe
+    if (!fs.existsSync(oldPath)) {
+        console.error(`❌ Error: El archivo de snapshot no existe: ${oldPath}`);
+        return null;
+    }
+
+    try {
+        // Si el archivo destino ya existe, eliminarlo primero
+        if (fs.existsSync(newPath)) {
+            fs.unlinkSync(newPath);
+        }
+
+        fs.renameSync(oldPath, newPath);
+        console.log(`✅ Snapshot renombrado: ${newPath}`);
+        return newPath;
+    } catch (error) {
+        console.error(`❌ Error al renombrar snapshot: ${error.message}`);
+        return null;
+    }
 };
+
 
 /**
  * Sube la captura de pantalla al servidor.
@@ -185,6 +299,21 @@ const uploadSnapshot = async (snapshotPath) => {
         headers,
     });
 };
+
+const cleanOldSnapshots = async () => {
+    try {
+        const snapshotPath = appConfig.paths.snapshots;
+        const files = await fsPromises.readdir(snapshotPath);
+
+        const deletions = files
+            .filter(file => file !== 'snapshot.jpg') // conserva el actual si ya existe
+            .map(file => fsPromises.unlink(path.join(snapshotPath, file)));
+        await Promise.all(deletions);
+        console.log(`🧹 Limpieza de snapshots anterior completada (${deletions.length} archivos eliminados)`);
+    } catch (error) {
+        console.error(`❌ Error al limpiar snapshots anteriores: ${error.message}`);
+    }
+}
 
 /**
  * @swagger

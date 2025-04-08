@@ -386,113 +386,24 @@ function getAppInfo() {
 // Función principal para obtener todo el estado del sistema
 export async function getSystemState() {
     try {
-        // Primero intentamos cargar el estado guardado
-        let systemState = {};
-        if (fs.existsSync(STATE_FILE_PATH)) {
-            const data = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
-            systemState = JSON.parse(data);
-        }
-
-        // Si no hay una propiedad activePlaylist, inicializamos una vacía
-        if (!systemState.activePlaylist) {
-            systemState.activePlaylist = {
-                playlistName: null,
-                playlistPath: null,
-                currentIndex: 0,
-                fileCount: 0,
-                isDefault: false,
-                lastLoaded: null
-            };
-        }
-
-        // Si no hay una propiedad defaultPlaylist, inicializamos una vacía
-        if (!systemState.defaultPlaylist) {
-            systemState.defaultPlaylist = {
-                playlistName: null,
-                playlistPath: null,
-                isDefault: true,
-                lastLoaded: null
-            };
-        }
-
-        // Obtenemos el estado actual de VLC para sincronizarlo con activePlaylist
-        let vlcStatus = null;
-        try {
-            vlcStatus = await getVLCStatus();
-
-            // Si VLC está reproduciendo algo, usamos esa información para actualizar activePlaylist
-            if (vlcStatus && vlcStatus.connected && vlcStatus.playing && vlcStatus.currentItem) {
-                console.log(`ℹ️ VLC está reproduciendo: ${vlcStatus.currentItem}`);
-
-                // Usamos la playlist activa actual como fuente de información
-                const activePlaylist = await getActivePlaylist();
-                if (activePlaylist && activePlaylist.playlistName) {
-                    console.log(`ℹ️ Playlist activa configurada: ${activePlaylist.playlistName}`);
-
-                    // Actualizar activePlaylist con los datos reales de lo que VLC está reproduciendo
-                    systemState.activePlaylist = {
-                        ...systemState.activePlaylist,
-                        ...activePlaylist,
-                        // Mantener otros campos si existen
-                        currentIndex: vlcStatus.position !== undefined ?
-                            Math.floor(vlcStatus.position * activePlaylist.fileCount) :
-                            systemState.activePlaylist.currentIndex
-                    };
-
-                    console.log(`✅ Información de playlist sincronizada con estado real de VLC`);
-                }
-            }
-        } catch (error) {
-            console.warn(`⚠️ No se pudo obtener el estado de VLC para sincronizar: ${error.message}`);
-        }
-
-        // Intentamos cargar información de la playlist activa desde systemState.json
-        try {
-            if (fs.existsSync(STATE_FILE_PATH)) {
-                // Ya tenemos cargado systemState, verificamos si tiene información completa
-                // Si no, intentamos complementarla con getActivePlaylist()
-                const activePlaylist = await getActivePlaylist();
-                if (activePlaylist && activePlaylist.playlistName &&
-                    (!systemState.activePlaylist || !systemState.activePlaylist.playlistPath)) {
-                    console.log(`ℹ️ Complementando información de playlist desde getActivePlaylist()`);
-                    systemState.activePlaylist = {
-                        ...systemState.activePlaylist,
-                        ...activePlaylist
-                    };
-                }
-            }
-        } catch (err) {
-            console.error(`Error al verificar la información de la playlist activa: ${err.message}`);
-        }
-
-        // Aseguramos que playlistPath nunca sea null si tenemos playlistName
-        if (systemState.activePlaylist.playlistName && !systemState.activePlaylist.playlistPath) {
-            await reconstruirPathPlaylist(systemState.activePlaylist);
-        }
-
-        // Aseguramos que la playlist por defecto tenga su path si tiene nombre
-        if (systemState.defaultPlaylist.playlistName && !systemState.defaultPlaylist.playlistPath) {
-            await reconstruirPathPlaylist(systemState.defaultPlaylist);
-        }
-
         // Obtener información del sistema
         const system = await getSystemInfo();
-
-        // Obtener información de almacenamiento
         const storage = await getStorageInfo();
-
-        // Obtener información de VLC
-        let vlc = { connected: false, playing: false, paused: false, stopped: true };
-        try {
-            vlc = await getVLCStatus() || vlc;
-        } catch (error) {
-            console.log('ℹ️ No se pudo obtener el estado de VLC:', error.message);
-        }
-
-        // Obtener información de la aplicación
+        const vlc = await getVLCStatus();
         const app = getAppInfo();
 
-        // Crear el estado del sistema con timestamp
+        // Cargar el estado guardado para obtener información de playlists
+        const systemState = await loadSystemState() || {};
+
+        // Asegurar que la propiedad snapshot exista
+        if (!systemState.snapshot) {
+            systemState.snapshot = {
+                url: null,
+                createdAt: null
+            };
+        }
+
+        // Crear un nuevo estado combinando la información actual con la guardada
         const newState = {
             timestamp: new Date().toISOString(),
             system,
@@ -500,7 +411,8 @@ export async function getSystemState() {
             vlc,
             app,
             activePlaylist: systemState.activePlaylist,
-            defaultPlaylist: systemState.defaultPlaylist
+            defaultPlaylist: systemState.defaultPlaylist,
+            snapshot: systemState.snapshot
         };
 
         return newState;
@@ -519,6 +431,22 @@ export async function saveSystemState(forceState = null) {
 
         // Hacer una copia del estado para modificarlo antes de guardar
         const stateToSave = JSON.parse(JSON.stringify(state));
+
+        // Preservar la propiedad snapshot si existe en el archivo actual
+        try {
+            if (fs.existsSync(STATE_FILE_PATH)) {
+                const currentData = await fsPromises.readFile(STATE_FILE_PATH, 'utf8');
+                const currentState = JSON.parse(currentData);
+
+                // Si existe la propiedad snapshot en el archivo actual pero no en el nuevo estado
+                if (currentState.snapshot && !stateToSave.snapshot) {
+                    console.log('ℹ️ Preservando propiedad snapshot del archivo actual');
+                    stateToSave.snapshot = currentState.snapshot;
+                }
+            }
+        } catch (error) {
+            console.warn(`⚠️ Error al intentar preservar snapshot: ${error.message}`);
+        }
 
         // Asegurar que activePlaylist tenga todos los campos necesarios y sean válidos
         if (stateToSave.activePlaylist) {
