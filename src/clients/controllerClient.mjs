@@ -131,25 +131,65 @@ class ControllerClient {
         if (!controller) return;
 
         controller
-            .on('connect', () => this.handleControllerConnect())
-            .on('AUTH_SUCCESS', (data) => this.handleAuthSuccess(data))
-            .on('disconnect', () => this.handleControllerDisconnect())
-            .on('error', (error) => this.handleControllerError(error))
-            .on('PLAY', (data) => this.emitControlEvent('PLAY', data))
-            .on('PAUSE', (data) => this.emitControlEvent('PAUSE', data))
-            .on('STOP', (data) => this.emitControlEvent('STOP', data))
-            .on('NEXT', (data) => this.emitControlEvent('NEXT', data))
-            .on('PREVIOUS', (data) => this.emitControlEvent('PREVIOUS', data))
-            .on('VOLUME_UP', (data) => this.emitControlEvent('VOLUME_UP', data))
-            .on('VOLUME_DOWN', (data) => this.emitControlEvent('VOLUME_DOWN', data))
-            .on('MUTE', (data) => this.emitControlEvent('MUTE', data))
-            .on('UNMUTE', (data) => this.emitControlEvent('UNMUTE', data));
+            .on('connect', () => {
+                console.log('🔌 Evento: Conexión establecida con el controlador');
+                this.handleControllerConnect();
+            })
+            .on('AUTH_SUCCESS', (data) => {
+                console.log('🔐 Evento: Autenticación exitosa', data);
+                this.handleAuthSuccess(data);
+            })
+            .on('disconnect', () => {
+                console.log('🔌 Evento: Desconexión del controlador');
+                this.handleControllerDisconnect();
+            })
+            .on('error', (error) => {
+                console.error('❌ Evento: Error en el controlador', error);
+                this.handleControllerError(error);
+            })
+            .on('PLAY', (data) => {
+                console.log('▶️ Evento: Comando PLAY recibido', data);
+                this.emitControlEvent('PLAY', data);
+            })
+            .on('PAUSE', (data) => {
+                console.log('⏸️ Evento: Comando PAUSE recibido', data);
+                this.emitControlEvent('PAUSE', data);
+            })
+            .on('STOP', (data) => {
+                console.log('⏹️ Evento: Comando STOP recibido', data);
+                this.emitControlEvent('STOP', data);
+            })
+            .on('NEXT', (data) => {
+                console.log('⏭️ Evento: Comando NEXT recibido', data);
+                this.emitControlEvent('NEXT', data);
+            })
+            .on('PREVIOUS', (data) => {
+                console.log('⏮️ Evento: Comando PREVIOUS recibido', data);
+                this.emitControlEvent('PREVIOUS', data);
+            })
+            .on('VOLUME_UP', (data) => {
+                console.log('🔊 Evento: Comando VOLUME_UP recibido', data);
+                this.emitControlEvent('VOLUME_UP', data);
+            })
+            .on('VOLUME_DOWN', (data) => {
+                console.log('🔉 Evento: Comando VOLUME_DOWN recibido', data);
+                this.emitControlEvent('VOLUME_DOWN', data);
+            })
+            .on('MUTE', (data) => {
+                console.log('🔇 Evento: Comando MUTE recibido', data);
+                this.emitControlEvent('MUTE', data);
+            })
+            .on('UNMUTE', (data) => {
+                console.log('🔊 Evento: Comando UNMUTE recibido', data);
+                this.emitControlEvent('UNMUTE', data);
+            });
 
         // Manejar eventos de control remoto
         controller.on('remote-control', async (data) => {
+            console.log('🎮 Evento: Comando de control remoto recibido', data);
             try {
                 const { action, commandId, timestamp } = data;
-                console.log(`Recibido comando de control: ${action}`, { commandId, timestamp });
+                console.log(`Procesando comando de control: ${action}`, { commandId, timestamp });
 
                 // Validar el comando
                 if (!['PLAY', 'PAUSE', 'STOP', 'NEXT', 'PREVIOUS'].includes(action)) {
@@ -179,6 +219,7 @@ class ControllerClient {
                 }
 
                 // Enviar confirmación
+                console.log(`Enviando confirmación del comando ${action}:`, { success, commandId });
                 controller.emit('command_received', {
                     success,
                     commandId,
@@ -304,26 +345,55 @@ class ControllerClient {
         }
 
         try {
+            console.log('🔄 Iniciando proceso de heartbeat...');
+
+            // Actualizar estado de VLC
+            console.log('📺 Actualizando estado de VLC...');
             await this.updateVlcStatus();
+            console.log('✅ Estado de VLC actualizado:', this.state.vlcData);
+
+            // Obtener snapshot
+            console.log('📸 Obteniendo snapshot...');
             const snapshot = await this.getSnapshot();
+            console.log(snapshot ? '✅ Snapshot obtenido' : '⚠️ No se pudo obtener snapshot');
+
+            // Preparar datos del heartbeat
+            console.log('📦 Preparando datos del heartbeat...');
             const heartbeatData = this.prepareHeartbeatData(snapshot);
+            console.log('✅ Datos del heartbeat preparados:', {
+                deviceId: heartbeatData.id,
+                vlcStatus: heartbeatData.vlc?.status?.status,
+                hasSnapshot: !!heartbeatData.snapshot
+            });
 
             // Enviar a controlador
+            console.log('📤 Enviando heartbeat al controlador...');
             controller.emit('heartbeat', heartbeatData);
+            console.log('✅ Heartbeat enviado al controlador');
 
             // Enviar a monitor si está conectado
             if (monitor?.connected) {
+                console.log('📤 Enviando heartbeat al monitor...');
                 monitor.emit('heartbeat', heartbeatData);
+                console.log('✅ Heartbeat enviado al monitor');
                 this.state.reconnectAttempts = 0;
             } else {
+                console.log('⚠️ Monitor no conectado, iniciando reconexión...');
                 this.reconnectMonitor();
             }
 
             this.logHeartbeat(heartbeatData);
         } catch (error) {
             console.error('❌ Error en heartbeat:', error?.message || 'Error desconocido');
-            if (error?.message) {
-                console.error('Detalles del error:', error.message);
+            if (error?.stack) {
+                console.error('Stack trace:', error.stack);
+            }
+            // Intentar obtener más información sobre el error
+            if (error?.response) {
+                console.error('Detalles de la respuesta:', {
+                    status: error.response.status,
+                    data: error.response.data
+                });
             }
         }
     }
@@ -425,7 +495,7 @@ class ControllerClient {
 
     handleReconnection(type, connectFn) {
         if (this.state.reconnectAttempts >= this.config.maxReconnectAttempts) {
-            this.logError(`Máximo de intentos de reconexión para ${type} alcanzado`);
+            console.log(`⚠️ Máximo de intentos de reconexión para ${type} alcanzado (${this.state.reconnectAttempts}/${this.config.maxReconnectAttempts})`);
 
             // Si es el controlador, mantener el intervalo de verificación periódica
             if (type === 'controller') {
@@ -433,17 +503,33 @@ class ControllerClient {
                 return;
             }
 
+            // Si es el monitor, resetear los intentos después de un tiempo
+            if (type === 'monitor') {
+                console.log('🔄 Programando reset de intentos de reconexión para el monitor...');
+                setTimeout(() => {
+                    this.state.reconnectAttempts = 0;
+                    console.log('✅ Intentos de reconexión reseteados para el monitor');
+                }, 60000); // Resetear después de 1 minuto
+            }
             return;
         }
 
         this.state.reconnectAttempts++;
-        this.log(`Intento de reconexión ${this.state.reconnectAttempts}/${this.config.maxReconnectAttempts}`);
+        console.log(`🔄 Intento de reconexión ${this.state.reconnectAttempts}/${this.config.maxReconnectAttempts} para ${type}`);
 
         if (this.state.sockets[type]) {
             this.state.sockets[type].disconnect();
         }
 
-        connectFn();
+        // Intentar reconectar
+        try {
+            connectFn();
+        } catch (error) {
+            console.error(`❌ Error al intentar reconectar ${type}:`, error?.message || 'Error desconocido');
+            if (error?.stack) {
+                console.error('Stack trace:', error.stack);
+            }
+        }
     }
 
     // Manejo de estado
@@ -470,7 +556,14 @@ class ControllerClient {
 
     logError(context, error) {
         console.error(`\n=== Error en ${context} ===`);
-        console.error(error.message || error);
+        if (error instanceof Error) {
+            console.error(error.message);
+            if (error.stack) {
+                console.error('Stack trace:', error.stack);
+            }
+        } else {
+            console.error(error?.toString() || 'Error desconocido');
+        }
         console.error('=========================');
     }
 

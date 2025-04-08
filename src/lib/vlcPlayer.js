@@ -158,7 +158,7 @@ export class VLCPlayer {
                 '--intf=http',                // Interfaz HTTP para control
                 '--http-port=8080',           // Puerto HTTP
                 '--http-password=tecno',      // Contraseña HTTP
-                '--http-host=localhost',      // Host HTTP
+                '--http-host=0.0.0',      // Host HTTP
 
                 // Opciones de Snapshot
                 '--snapshot-path=/home/tecno/app-player/public/snapshots/', // Directorio donde se almacenarán las instantáneas

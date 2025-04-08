@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-04-08T14:33:18.753Z",
+  "timestamp": "2025-04-08T21:28:03.082Z",
   "system": {
     "hostname": "base",
     "platform": "linux",
@@ -7,12 +7,12 @@
     "release": "6.12.18-v8+",
     "cpus": 4,
     "totalMem": 3923357696,
-    "freeMem": 1763143680,
-    "uptime": 91693.1,
+    "freeMem": 2007568384,
+    "uptime": 116577.46,
     "loadavg": [
-      2.69,
-      2.02,
-      1.65
+      1.43,
+      1.37,
+      1.68
     ],
     "network": {
       "lo": {
@@ -34,7 +34,7 @@
         "internal": false
       }
     },
-    "timestamp": "2025-04-08T14:33:18.646Z"
+    "timestamp": "2025-04-08T21:28:03.013Z"
   },
   "storage": {
     "playlistDirectory": "./public/videos",
@@ -45,19 +45,19 @@
       "fileCount": 0
     },
     "totalSpace": 61641601024,
-    "freeSpace": 40825696256,
-    "usedSpace": 20815904768,
-    "timestamp": "2025-04-08T14:33:18.708Z"
+    "freeSpace": 40820277248,
+    "usedSpace": 20821323776,
+    "timestamp": "2025-04-08T21:28:03.045Z"
   },
   "vlc": {
     "connected": true,
     "playing": true,
     "paused": false,
     "stopped": false,
-    "currentItem": "WeAreGoingOnBullrun.mp4",
-    "position": 0.94608628749847,
-    "time": 44,
-    "length": 47,
+    "currentItem": "ForBiggerBlazes.mp4",
+    "position": 0.40964418649673,
+    "time": 6,
+    "length": 15,
     "volume": 0,
     "random": false,
     "repeat": false,
@@ -77,16 +77,16 @@
       "port": 8080
     },
     "version": "1.0.0",
-    "startTime": "2025-04-08T14:33:18.739Z",
+    "startTime": "2025-04-08T21:28:03.076Z",
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
-    "playlistName": "Run",
-    "playlistPath": "public/videos/Run/Run.m3u",
-    "lastLoaded": "2025-04-08T12:49:31.352Z",
+    "playlistName": "VideosCortos",
+    "playlistPath": "public/videos/VideosCortos/VideosCortos.m3u",
+    "lastLoaded": "2025-04-08T21:09:02.926Z",
     "isActive": true,
     "currentIndex": 1,
-    "fileCount": 1,
+    "fileCount": 3,
     "isDefault": false
   },
   "defaultPlaylist": {
@@ -95,6 +95,6 @@
   },
   "snapshot": {
     "url": "public/snapshots/snapshot.jpg",
-    "createdAt": "2025-04-08T14:33:25.124Z"
+    "createdAt": "2025-04-08T21:28:04.472Z"
   }
 }
