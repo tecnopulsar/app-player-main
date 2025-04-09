@@ -50,7 +50,11 @@ io.on('connection', (socket) => {
         connectedDevices.set(socket.id, {
             ...deviceInfo,
             socketId: socket.id,
-            connectedAt: new Date().toISOString()
+            connectedAt: new Date().toISOString(),
+            lastHeartbeat: null,
+            status: 'connecting',
+            vlcData: null,
+            systemState: null
         });
 
         // Enviar confirmación de autenticación
@@ -70,11 +74,33 @@ io.on('connection', (socket) => {
             connectedDevices.set(socket.id, {
                 ...device,
                 lastHeartbeat: new Date().toISOString(),
-                status: data.status,
-                vlcData: data.vlc
+                status: data.status || device.status,
+                vlcData: {
+                    ...data.vlc,
+                    currentItem: data.vlc?.status?.currentItem || null,
+                    playlist: data.vlc?.playlist || null,
+                    status: data.vlc?.status || null
+                },
+                systemState: data.systemState || device.systemState,
+                snapshot: data.snapshot || device.snapshot
             });
 
             console.log(`Heartbeat recibido de ${device.name} (${device.id})`);
+
+            // Emitir actualización a todos los clientes web conectados
+            io.emit('device_update', {
+                id: device.id,
+                name: device.name,
+                status: device.status,
+                lastHeartbeat: device.lastHeartbeat,
+                vlcData: {
+                    ...data.vlc,
+                    currentItem: data.vlc?.status?.currentItem || null,
+                    playlist: data.vlc?.playlist || null,
+                    status: data.vlc?.status || null
+                },
+                systemState: device.systemState
+            });
         }
     });
 
@@ -84,6 +110,12 @@ io.on('connection', (socket) => {
         if (device) {
             console.log(`Dispositivo desconectado: ${device.name} (${device.id})`);
             connectedDevices.delete(socket.id);
+
+            // Notificar a los clientes web sobre la desconexión
+            io.emit('device_disconnected', {
+                id: device.id,
+                name: device.name
+            });
         } else {
             console.log(`Cliente desconectado: ${socket.id}`);
         }
@@ -100,10 +132,42 @@ app.get('/api/devices', (req, res) => {
         status: device.status,
         connectedAt: device.connectedAt,
         lastHeartbeat: device.lastHeartbeat,
-        vlcStatus: device.vlcData?.status || null
+        vlcStatus: device.vlcData?.status || null,
+        vlcPlaylist: device.vlcData?.playlist || null,
+        vlcCurrentItem: device.vlcData?.currentItem || null,
+        systemState: device.systemState || null
     }));
 
     res.json({ success: true, devices });
+});
+
+// Ruta para obtener información detallada de un dispositivo
+app.get('/api/devices/:deviceId', (req, res) => {
+    const { deviceId } = req.params;
+    const device = Array.from(connectedDevices.values()).find(d => d.id === deviceId);
+
+    if (!device) {
+        return res.status(404).json({ success: false, message: 'Dispositivo no encontrado' });
+    }
+
+    res.json({
+        success: true,
+        device: {
+            id: device.id,
+            name: device.name,
+            ip: device.ip,
+            mac: device.mac,
+            status: device.status,
+            connectedAt: device.connectedAt,
+            lastHeartbeat: device.lastHeartbeat,
+            vlcData: {
+                status: device.vlcData?.status || null,
+                playlist: device.vlcData?.playlist || null,
+                currentItem: device.vlcData?.currentItem || null
+            },
+            systemState: device.systemState
+        }
+    });
 });
 
 // Ruta para enviar comandos a dispositivos

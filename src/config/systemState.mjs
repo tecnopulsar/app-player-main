@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { appConfig } from './appConfig.mjs';
+import { loadSystemState, saveSystemState } from '../utils/systemState.mjs';
 
 class SystemState {
     constructor() {
@@ -95,4 +96,7 @@ class SystemState {
 }
 
 // Exportar una instancia única del estado del sistema
-export const systemState = new SystemState(); 
+export const systemState = new SystemState();
+
+// Re-exportar las funciones del módulo utils/systemState.mjs para mantener compatibilidad
+export { loadSystemState, saveSystemState }; 

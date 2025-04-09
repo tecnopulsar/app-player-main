@@ -7,10 +7,9 @@ import { promises as fsPromises } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
 class ControllerClient {
-    constructor(serverUrl = null, monitorUrl = null) {
+    constructor(serverUrl = null) {
         this.config = {
             serverUrl: serverUrl || appConfig.controller?.url || 'http://localhost:3001',
-            monitorUrl: monitorUrl || appConfig.monitor?.url || 'http://localhost:3002',
             heartbeatInterval: appConfig.controller?.heartbeatInterval || 25000,
             verboseLogs: appConfig.controller?.verboseLogs || false,
             maxReconnectAttempts: appConfig.controller?.maxReconnectAttempts || 5,
@@ -32,13 +31,11 @@ class ControllerClient {
                 playlist: null
             },
             sockets: {
-                controller: null,
-                monitor: null
+                controller: null
             },
             reconnectAttempts: 0,
             intervals: {
-                heartbeat: null,
-                reconnectCheck: null
+                heartbeat: null
             }
         };
     }
@@ -68,9 +65,8 @@ class ControllerClient {
     }
 
     async checkServersAvailability() {
-        const [controllerAvailable, monitorAvailable] = await Promise.all([
-            this.checkServerAvailability(this.config.serverUrl),
-            this.checkServerAvailability(this.config.monitorUrl)
+        const [controllerAvailable] = await Promise.all([
+            this.checkServerAvailability(this.config.serverUrl)
         ]);
 
         if (controllerAvailable) {
@@ -79,12 +75,6 @@ class ControllerClient {
             console.warn(`⚠️ Servidor controlador no disponible en ${this.config.serverUrl}`);
             // Iniciar el proceso de reconexión para el controlador
             this.reconnectController();
-        }
-
-        if (monitorAvailable) {
-            this.connectToMonitor();
-        } else {
-            console.warn(`⚠️ Servidor monitor no disponible en ${this.config.monitorUrl}`);
         }
     }
 
@@ -110,20 +100,8 @@ class ControllerClient {
         this.setupControllerEvents();
     }
 
-    connectToMonitor() {
-        this.state.sockets.monitor = io(this.config.monitorUrl, {
-            reconnection: true,
-            reconnectionAttempts: this.config.maxReconnectAttempts,
-            reconnectionDelay: this.config.reconnectDelay,
-            timeout: this.config.connectionTimeout
-        });
-
-        this.setupMonitorEvents();
-    }
-
     setupEventHandlers() {
         this.setupControllerEvents();
-        this.setupMonitorEvents();
     }
 
     setupControllerEvents() {
@@ -242,16 +220,6 @@ class ControllerClient {
         });
     }
 
-    setupMonitorEvents() {
-        const { monitor } = this.state.sockets;
-        if (!monitor) return;
-
-        monitor
-            .on('connect', () => this.handleMonitorConnect())
-            .on('disconnect', () => this.handleMonitorDisconnect())
-            .on('error', (error) => this.handleMonitorError(error));
-    }
-
     // Handlers de eventos
     handleControllerConnect() {
         this.logConnection('Controlador', this.state.sockets.controller.id);
@@ -274,26 +242,6 @@ class ControllerClient {
     handleControllerError(error) {
         this.logError('Controlador', error);
         this.reconnectController();
-    }
-
-    handleMonitorConnect() {
-        this.logConnection('Monitor', this.state.sockets.monitor.id);
-    }
-
-    handleMonitorDisconnect() {
-        if (this.state.reconnectAttempts < this.config.maxReconnectAttempts) {
-            this.state.reconnectAttempts++;
-            console.log(`🔄 Intento de reconexión ${this.state.reconnectAttempts}/${this.config.maxReconnectAttempts}`);
-            setTimeout(() => this.connectToMonitor(), this.config.reconnectDelay);
-        } else {
-            console.error('❌ Máximo de intentos de reconexión para monitor alcanzado');
-            // Aquí podrías implementar una lógica adicional para manejar el fallo permanente
-        }
-    }
-
-    handleMonitorError(error) {
-        console.error('❌ Error en la conexión con el monitor:', error?.message || 'Error desconocido');
-        this.handleMonitorDisconnect();
     }
 
     async emitControlEvent(event, data = {}) {
@@ -337,18 +285,11 @@ class ControllerClient {
     }
 
     async sendHeartbeat() {
-        const { controller, monitor } = this.state.sockets;
-
-        if (!controller?.connected) {
-            console.warn('⚠️ No se pudo enviar heartbeat: Socket no conectado');
-            return;
-        }
-
         try {
             console.log('🔄 Iniciando proceso de heartbeat...');
 
             // Actualizar estado de VLC
-            console.log('📺 Actualizando estado de VLC...');
+            console.log('📊 Actualizando estado de VLC...');
             await this.updateVlcStatus();
             console.log('✅ Estado de VLC actualizado:', this.state.vlcData);
 
@@ -357,43 +298,51 @@ class ControllerClient {
             const snapshot = await this.getSnapshot();
             console.log(snapshot ? '✅ Snapshot obtenido' : '⚠️ No se pudo obtener snapshot');
 
+            // Obtener estado completo del sistema
+            console.log('🔍 Obteniendo estado completo del sistema...');
+            const systemState = await this.getSystemState();
+            console.log('✅ Estado del sistema obtenido');
+
             // Preparar datos del heartbeat
             console.log('📦 Preparando datos del heartbeat...');
-            const heartbeatData = this.prepareHeartbeatData(snapshot);
+            const heartbeatData = this.prepareHeartbeatData(snapshot, systemState);
             console.log('✅ Datos del heartbeat preparados:', {
                 deviceId: heartbeatData.id,
                 vlcStatus: heartbeatData.vlc?.status?.status,
-                hasSnapshot: !!heartbeatData.snapshot
+                hasSnapshot: !!heartbeatData.snapshot,
+                hasSystemState: !!heartbeatData.systemState
             });
 
             // Enviar a controlador
             console.log('📤 Enviando heartbeat al controlador...');
-            controller.emit('heartbeat', heartbeatData);
-            console.log('✅ Heartbeat enviado al controlador');
-
-            // Enviar a monitor si está conectado
-            if (monitor?.connected) {
-                console.log('📤 Enviando heartbeat al monitor...');
-                monitor.emit('heartbeat', heartbeatData);
-                console.log('✅ Heartbeat enviado al monitor');
-                this.state.reconnectAttempts = 0;
+            if (this.state.sockets.controller?.connected) {
+                this.state.sockets.controller.emit('heartbeat', heartbeatData);
+                console.log('✅ Heartbeat enviado al controlador');
             } else {
-                console.log('⚠️ Monitor no conectado, iniciando reconexión...');
-                this.reconnectMonitor();
+                console.warn('⚠️ Controlador no conectado, intentando reconectar...');
+                this.reconnectController();
             }
 
             this.logHeartbeat(heartbeatData);
         } catch (error) {
-            console.error('❌ Error en heartbeat:', error?.message || 'Error desconocido');
-            if (error?.stack) {
-                console.error('Stack trace:', error.stack);
+            const errorMessage = error?.message || 'Error desconocido';
+            const errorStack = error?.stack || 'No stack trace disponible';
+            const errorResponse = error?.response ? {
+                status: error.response.status,
+                data: error.response.data
+            } : null;
+
+            console.error('❌ Error en heartbeat:', errorMessage);
+            console.error('Stack trace:', errorStack);
+
+            if (errorResponse) {
+                console.error('Detalles de la respuesta:', errorResponse);
             }
-            // Intentar obtener más información sobre el error
-            if (error?.response) {
-                console.error('Detalles de la respuesta:', {
-                    status: error.response.status,
-                    data: error.response.data
-                });
+
+            // Intentar reconectar si es un error de conexión
+            if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+                console.log('🔄 Error de conexión detectado, intentando reconectar...');
+                this.reconnectController();
             }
         }
     }
@@ -452,14 +401,71 @@ class ControllerClient {
         }
     }
 
-    prepareHeartbeatData(snapshot) {
+    async getSystemState() {
+        try {
+            // Obtener información del sistema
+            const systemInfo = {
+                cpu: process.cpuUsage(),
+                memory: process.memoryUsage(),
+                uptime: process.uptime(),
+                platform: process.platform,
+                arch: process.arch,
+                version: process.version,
+                pid: process.pid,
+                title: process.title,
+                env: process.env.NODE_ENV || 'production'
+            };
+
+            // Obtener información de red
+            const networkInfo = {
+                localIP: this.state.deviceInfo.ip,
+                macAddress: this.state.deviceInfo.mac
+            };
+
+            // Obtener información de VLC
+            const vlcInfo = {
+                status: this.state.vlcData.status,
+                playlist: this.state.vlcData.playlist,
+                isRunning: this.state.vlcData.status?.connected || false,
+                currentItem: this.state.vlcData.status?.currentItem || null,
+                length: this.state.vlcData.status?.length || 0,
+                time: this.state.vlcData.status?.time || 0,
+                volume: this.state.vlcData.status?.volume || 0,
+                state: this.state.vlcData.status?.state || 'unknown'
+            };
+
+            // Obtener información de la aplicación
+            const appInfo = {
+                name: appConfig.app.name,
+                version: appConfig.app.version,
+                deviceId: this.state.deviceInfo.id,
+                deviceName: this.state.deviceInfo.name,
+                deviceType: appConfig.device.type,
+                deviceGroup: appConfig.device.group
+            };
+
+            return {
+                timestamp: new Date().toISOString(),
+                system: systemInfo,
+                network: networkInfo,
+                vlc: vlcInfo,
+                app: appInfo
+            };
+        } catch (error) {
+            console.error('❌ Error al obtener estado del sistema:', error);
+            return null;
+        }
+    }
+
+    prepareHeartbeatData(snapshot, systemState) {
         this.updateDeviceStatus('active');
 
         const heartbeatData = {
             ...this.state.deviceInfo,
             timestamp: new Date().toISOString(),
             vlc: this.state.vlcData,
-            snapshot: snapshot || null
+            snapshot: snapshot || null,
+            systemState: systemState || null
         };
 
         return heartbeatData;
@@ -468,49 +474,11 @@ class ControllerClient {
     // Reconexión
     reconnectController() {
         this.handleReconnection('controller', () => this.connectToController());
-
-        // Iniciar un intervalo de verificación periódica si no está activo
-        if (!this.state.intervals.reconnectCheck) {
-            console.log('🔄 Iniciando verificación periódica de disponibilidad del servidor controlador');
-            this.state.intervals.reconnectCheck = setInterval(async () => {
-                // Verificar si el servidor está disponible
-                const isAvailable = await this.checkServerAvailability(this.config.serverUrl);
-
-                if (isAvailable) {
-                    // Si el servidor está disponible y no estamos conectados, intentar reconectar
-                    if (!this.state.sockets.controller?.connected) {
-                        console.log('✅ Servidor controlador disponible. Intentando reconectar...');
-                        this.connectToController();
-                    }
-                } else {
-                    console.log('⚠️ Servidor controlador aún no disponible. Seguirá intentando...');
-                }
-            }, 30000); // Verificar cada 30 segundos
-        }
-    }
-
-    reconnectMonitor() {
-        this.handleReconnection('monitor', () => this.connectToMonitor());
     }
 
     handleReconnection(type, connectFn) {
         if (this.state.reconnectAttempts >= this.config.maxReconnectAttempts) {
             console.log(`⚠️ Máximo de intentos de reconexión para ${type} alcanzado (${this.state.reconnectAttempts}/${this.config.maxReconnectAttempts})`);
-
-            // Si es el controlador, mantener el intervalo de verificación periódica
-            if (type === 'controller') {
-                console.log('ℹ️ Se mantendrá la verificación periódica de disponibilidad del servidor');
-                return;
-            }
-
-            // Si es el monitor, resetear los intentos después de un tiempo
-            if (type === 'monitor') {
-                console.log('🔄 Programando reset de intentos de reconexión para el monitor...');
-                setTimeout(() => {
-                    this.state.reconnectAttempts = 0;
-                    console.log('✅ Intentos de reconexión reseteados para el monitor');
-                }, 60000); // Resetear después de 1 minuto
-            }
             return;
         }
 
@@ -602,12 +570,10 @@ class ControllerClient {
     disconnect() {
         this.stopHeartbeat();
 
-        Object.values(this.state.sockets).forEach(socket => {
-            if (socket) {
-                socket.disconnect();
-                this.log(`Desconectado de ${socket === this.state.sockets.controller ? 'Controlador' : 'Monitor'}`);
-            }
-        });
+        if (this.state.sockets.controller) {
+            this.state.sockets.controller.disconnect();
+            this.log('Desconectado del controlador');
+        }
     }
 }
 

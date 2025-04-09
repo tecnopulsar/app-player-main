@@ -10,6 +10,7 @@
  * @requires axios - Cliente HTTP para comunicación con VLC
  * @requires ./activePlaylist.mjs - Gestión de playlists activas
  * @requires ../config/appConfig.mjs - Configuración de la aplicación
+ * @requires ../config/systemState.mjs - Instancia del estado del sistema
  * 
  * @version 2.1.0
  * @license MIT
@@ -52,8 +53,10 @@ import os from 'os';
 import axios from 'axios';
 import { getActivePlaylist } from './activePlaylist.mjs';
 import { appConfig } from '../config/appConfig.mjs';
+import { systemState } from '../config/systemState.mjs';
+
 // Rutas de archivos de estado
-const STATE_FILE_PATH = path.join(process.cwd(), 'src/config/systemState.json');
+const STATE_FILE_PATH = appConfig.paths.systemState;
 const getConfig = () => appConfig;
 
 // Función para obtener información del sistema

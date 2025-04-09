@@ -5,6 +5,10 @@ const refreshButton = document.getElementById('refresh-devices');
 const lastUpdateSpan = document.getElementById('last-update');
 const deviceDetails = document.getElementById('device-details');
 const commandButtons = document.querySelectorAll('.command-btn');
+const systemInfo = document.getElementById('system-info');
+const systemResources = document.getElementById('system-resources');
+const networkInfo = document.getElementById('network-info');
+const vlcInfo = document.getElementById('vlc-info');
 
 // Estado de la aplicación
 let devices = [];
@@ -190,6 +194,9 @@ function updateDeviceDetails(device) {
     <p><span class="detail-label">Archivo actual:</span> ${device.vlcStatus?.currentItem || 'Ninguno'}</p>
     <p><span class="detail-label">Playlist:</span> ${device.vlcStatus?.playlist || 'Ninguna'}</p>
   `;
+
+    // Actualizar información del sistema
+    updateDeviceInfo(device);
 }
 
 function updateLastUpdateTime() {
@@ -259,14 +266,112 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// Funciones auxiliares
-function formatDate(dateString) {
-    if (!dateString) return 'No disponible';
+// Función para actualizar la información del dispositivo
+function updateDeviceInfo(device) {
+    const deviceDetails = document.getElementById('device-details');
+    const systemInfo = document.getElementById('system-info');
+    const systemResources = document.getElementById('system-resources');
+    const networkInfo = document.getElementById('network-info');
+    const vlcInfo = document.getElementById('vlc-info');
 
+    // Información básica del dispositivo
+    deviceDetails.innerHTML = `
+        <p><strong>ID:</strong> ${device.id}</p>
+        <p><strong>Nombre:</strong> ${device.name}</p>
+        <p><strong>IP:</strong> ${device.ip}</p>
+        <p><strong>MAC:</strong> ${device.mac}</p>
+        <p><strong>Estado:</strong> <span class="status-${device.status}">${device.status}</span></p>
+        <p><strong>Último Heartbeat:</strong> ${formatDate(device.lastHeartbeat)}</p>
+        <p><strong>Conectado desde:</strong> ${formatDate(device.connectedAt)}</p>
+    `;
+
+    // Información del sistema
+    if (device.systemState) {
+        const { system, network, vlc } = device.systemState;
+
+        // Información del sistema
+        systemInfo.innerHTML = `
+            <p><strong>Plataforma:</strong> ${system.platform}</p>
+            <p><strong>Arquitectura:</strong> ${system.arch}</p>
+            <p><strong>Versión Node:</strong> ${system.version}</p>
+            <p><strong>PID:</strong> ${system.pid}</p>
+            <p><strong>Entorno:</strong> ${system.env}</p>
+        `;
+
+        // Recursos del sistema
+        systemResources.innerHTML = `
+            <p><strong>CPU:</strong> ${formatCPUUsage(system.cpu)}</p>
+            <p><strong>Memoria:</strong> ${formatMemoryUsage(system.memory)}</p>
+            <p><strong>Uptime:</strong> ${formatUptime(system.uptime)}</p>
+        `;
+
+        // Información de red
+        networkInfo.innerHTML = `
+            <p><strong>IP Local:</strong> ${network.localIP}</p>
+            <p><strong>MAC:</strong> ${network.macAddress}</p>
+        `;
+
+        // Información de VLC
+        vlcInfo.innerHTML = `
+            <p><strong>Estado:</strong> ${vlc.status?.status || 'Desconocido'}</p>
+            <p><strong>Reproduciendo:</strong> ${vlc.isRunning ? 'Sí' : 'No'}</p>
+            <p><strong>Playlist:</strong> ${vlc.playlist?.name || 'Ninguna'}</p>
+            <p><strong>Archivo actual:</strong> ${vlc.status?.currentItem || 'Ninguno'}</p>
+            <p><strong>Duración:</strong> ${formatDuration(vlc.status?.length || 0)}</p>
+            <p><strong>Tiempo actual:</strong> ${formatDuration(vlc.status?.time || 0)}</p>
+            <p><strong>Volumen:</strong> ${vlc.status?.volume || 0}%</p>
+        `;
+    } else {
+        systemInfo.innerHTML = '<p>No hay información del sistema disponible</p>';
+        systemResources.innerHTML = '<p>No hay información de recursos disponible</p>';
+        networkInfo.innerHTML = '<p>No hay información de red disponible</p>';
+        vlcInfo.innerHTML = '<p>No hay información de VLC disponible</p>';
+    }
+}
+
+// Funciones auxiliares para formatear datos
+function formatDate(dateString) {
+    if (!dateString) return 'Nunca';
     const date = new Date(dateString);
-    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    return date.toLocaleString();
+}
+
+function formatCPUUsage(cpu) {
+    if (!cpu) return 'N/A';
+    return `${(cpu.user + cpu.system).toFixed(2)}%`;
+}
+
+function formatMemoryUsage(memory) {
+    if (!memory) return 'N/A';
+    const used = Math.round(memory.heapUsed / 1024 / 1024);
+    const total = Math.round(memory.heapTotal / 1024 / 1024);
+    return `${used}MB / ${total}MB (${Math.round(used / total * 100)}%)`;
+}
+
+function formatUptime(seconds) {
+    if (!seconds) return 'N/A';
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${days}d ${hours}h ${minutes}m`;
 }
 
 function formatTime(date) {
     return date.toLocaleTimeString();
+}
+
+// Función para formatear la duración en segundos a formato legible
+function formatDuration(seconds) {
+    if (!seconds || seconds === 0) return '00:00:00';
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    return `${padZero(hours)}:${padZero(minutes)}:${padZero(secs)}`;
+}
+
+// Función auxiliar para añadir ceros a la izquierda
+function padZero(num) {
+    return num.toString().padStart(2, '0');
 } 
