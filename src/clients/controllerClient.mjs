@@ -50,7 +50,7 @@ class ControllerClient {
 
     async initialize() {
         try {
-            console.log('\n=== Iniciando Conexión ===');
+            console.log('\n=== Iniciando Conexión Socket Controller===');
 
             await this.checkServersAvailability();
             this.setupEventHandlers();
