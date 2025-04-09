@@ -124,100 +124,7 @@ class ControllerClient {
             .on('error', (error) => {
                 console.error('❌ Evento: Error en el controlador', error);
                 this.handleControllerError(error);
-            })
-            .on('PLAY', (data) => {
-                console.log('▶️ Evento: Comando PLAY recibido', data);
-                this.emitControlEvent('PLAY', data);
-            })
-            .on('PAUSE', (data) => {
-                console.log('⏸️ Evento: Comando PAUSE recibido', data);
-                this.emitControlEvent('PAUSE', data);
-            })
-            .on('STOP', (data) => {
-                console.log('⏹️ Evento: Comando STOP recibido', data);
-                this.emitControlEvent('STOP', data);
-            })
-            .on('NEXT', (data) => {
-                console.log('⏭️ Evento: Comando NEXT recibido', data);
-                this.emitControlEvent('NEXT', data);
-            })
-            .on('PREVIOUS', (data) => {
-                console.log('⏮️ Evento: Comando PREVIOUS recibido', data);
-                this.emitControlEvent('PREVIOUS', data);
-            })
-            .on('VOLUME_UP', (data) => {
-                console.log('🔊 Evento: Comando VOLUME_UP recibido', data);
-                this.emitControlEvent('VOLUME_UP', data);
-            })
-            .on('VOLUME_DOWN', (data) => {
-                console.log('🔉 Evento: Comando VOLUME_DOWN recibido', data);
-                this.emitControlEvent('VOLUME_DOWN', data);
-            })
-            .on('MUTE', (data) => {
-                console.log('🔇 Evento: Comando MUTE recibido', data);
-                this.emitControlEvent('MUTE', data);
-            })
-            .on('UNMUTE', (data) => {
-                console.log('🔊 Evento: Comando UNMUTE recibido', data);
-                this.emitControlEvent('UNMUTE', data);
             });
-
-        // Manejar eventos de control remoto
-        controller.on('remote-control', async (data) => {
-            console.log('🎮 Evento: Comando de control remoto recibido', data);
-            try {
-                const { action, commandId, timestamp } = data;
-                console.log(`Procesando comando de control: ${action}`, { commandId, timestamp });
-
-                // Validar el comando
-                if (!['PLAY', 'PAUSE', 'STOP', 'NEXT', 'PREVIOUS'].includes(action)) {
-                    throw new Error(`Comando no válido: ${action}`);
-                }
-
-                // Procesar el comando
-                let success = false;
-                let error = null;
-
-                switch (action) {
-                    case 'PLAY':
-                        success = await this.emitControlEvent('play');
-                        break;
-                    case 'PAUSE':
-                        success = await this.emitControlEvent('pause');
-                        break;
-                    case 'STOP':
-                        success = await this.emitControlEvent('stop');
-                        break;
-                    case 'NEXT':
-                        success = await this.emitControlEvent('next');
-                        break;
-                    case 'PREVIOUS':
-                        success = await this.emitControlEvent('previous');
-                        break;
-                }
-
-                // Enviar confirmación
-                console.log(`Enviando confirmación del comando ${action}:`, { success, commandId });
-                controller.emit('command_received', {
-                    success,
-                    commandId,
-                    error: error?.message,
-                    timestamp: new Date().toISOString()
-                });
-
-                if (!success) {
-                    console.error(`Error al ejecutar comando ${action}:`, error);
-                }
-            } catch (error) {
-                console.error('Error al procesar comando de control:', error);
-                controller.emit('command_received', {
-                    success: false,
-                    commandId: data.commandId,
-                    error: error.message,
-                    timestamp: new Date().toISOString()
-                });
-            }
-        });
     }
 
     // Handlers de eventos
@@ -242,32 +149,6 @@ class ControllerClient {
     handleControllerError(error) {
         this.logError('Controlador', error);
         this.reconnectController();
-    }
-
-    async emitControlEvent(event, data = {}) {
-        try {
-            const { controller } = this.state.sockets;
-            if (!controller?.connected) {
-                throw new Error('No hay conexión con el controlador');
-            }
-
-            // Emitir el evento al controlador
-            controller.emit(event, {
-                ...data,
-                deviceId: this.state.deviceInfo.id,
-                timestamp: new Date().toISOString()
-            });
-
-            // Actualizar el estado local si es necesario
-            if (['PLAY', 'PAUSE', 'STOP'].includes(event)) {
-                this.state.vlcData.status = event.toLowerCase();
-            }
-
-            return true;
-        } catch (error) {
-            console.error(`Error al emitir evento de control ${event}:`, error);
-            return false;
-        }
     }
 
     // Heartbeat y estado
