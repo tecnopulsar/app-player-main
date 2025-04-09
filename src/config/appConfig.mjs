@@ -1,5 +1,7 @@
 import os from 'os';
 import crypto from 'crypto';
+import { existsSync, mkdirSync } from 'fs';
+import { dirname } from 'path';
 
 // Generar un ID de dispositivo único basado en el hostname y MAC
 function generateDeviceId() {
@@ -70,7 +72,8 @@ export const appConfig = {
         screenshots: './public/screenshots',
         snapshots: './public/snapshots',
         images: './public/images',
-        temp: './public/temp'
+        temp: './public/temp',
+        systemState: './src/config/systemState.json'
     },
     // Configuración de seguridad
     security: {
@@ -79,4 +82,16 @@ export const appConfig = {
         allowedExtensions: ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v', '.m3u']
     }
 };
+
+// Función para asegurar que un directorio existe
+function ensureDirectoryExists(path) {
+    if (!existsSync(path)) {
+        mkdirSync(path, { recursive: true });
+    }
+}
+
+// Validar y crear las rutas necesarias
+Object.values(appConfig.paths).forEach(path => {
+    ensureDirectoryExists(dirname(path));
+});
 

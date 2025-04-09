@@ -729,19 +729,19 @@
         </div>
       </div>
       <div id="servers" class="tab-content">
-        <div class="card">
-          <div class="card-header">
+                <div class="card">
+                  <div class="card-header">
             <h2 class="card-title">Estado de los Servidores</h2>
             <button class="refresh-btn" id="refresh-servers"><i
                 class="fas fa-sync-alt"></i></button>
-          </div>
+                  </div>
           <div id="servers-container" class="grid">
             <div class="card">
               <div class="card-header">
                 <h3 class="card-title">Servidor Controlador</h3>
                 <span class="status-indicator status-online"
                   id="controller-status"></span>
-              </div>
+                  </div>
               <div class="server-info">
                 <p><i class="fas fa-network-wired"></i> URL: <span
                     id="controller-url">http://localhost:3001</span></p>
@@ -749,7 +749,7 @@
                     id="controller-uptime">0:00:00</span></p>
                 <p><i class="fas fa-users"></i> Dispositivos: <span
                     id="controller-devices">0</span></p>
-              </div>
+                </div>
               <div class="server-actions">
                 <button class="btn btn-primary"
                   id="controller-restart">Reiniciar</button>
@@ -757,12 +757,12 @@
                   Logs</button>
               </div>
             </div>
-            <div class="card">
-              <div class="card-header">
+                <div class="card">
+                  <div class="card-header">
                 <h3 class="card-title">Servidor Monitor</h3>
                 <span class="status-indicator status-monitor"
                   id="monitor-status"></span>
-              </div>
+                  </div>
               <div class="server-info">
                 <p><i class="fas fa-network-wired"></i> URL: <span
                     id="monitor-url">http://localhost:3002</span></p>
@@ -770,19 +770,19 @@
                     id="monitor-uptime">0:00:00</span></p>
                 <p><i class="fas fa-users"></i> Dispositivos: <span
                     id="monitor-devices">0</span></p>
-              </div>
+                    </div>
               <div class="server-actions">
                 <button class="btn btn-monitor"
                   id="monitor-restart">Reiniciar</button>
                 <button class="btn btn-info" id="monitor-logs">Ver Logs</button>
-              </div>
-            </div>
+                    </div>
+                  </div>
             <div class="card">
               <div class="card-header">
                 <h3 class="card-title">Servidor VLC</h3>
                 <span class="status-indicator status-online"
                   id="vlc-status"></span>
-              </div>
+                </div>
               <div class="server-info">
                 <p><i class="fas fa-network-wired"></i> URL: <span
                     id="vlc-url">http://localhost:8080</span></p>
@@ -802,46 +802,46 @@
         </div>
       </div>
       <div id="logs" class="tab-content">
-        <div class="card">
-          <div class="card-header">
+                <div class="card">
+                  <div class="card-header">
             <h2 class="card-title">Registros del Sistema</h2>
             <div>
               <button class="btn btn-primary" id="clear-logs">Limpiar</button>
               <button class="refresh-btn" id="refresh-logs"><i
                   class="fas fa-sync-alt"></i></button>
-            </div>
-          </div>
+                  </div>
+                    </div>
           <div class="log-container" id="log-container">
             <div class="log-entry">
               <span class="log-time">12:00:00</span>
               <span class="log-level info">INFO</span>
               <span class="log-message">Sistema iniciado correctamente</span>
               <span class="log-source">[Sistema]</span>
-            </div>
-          </div>
-        </div>
-      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
       <div id="settings" class="tab-content">
-        <div class="card">
-          <div class="card-header">
+                <div class="card">
+                  <div class="card-header">
             <h2 class="card-title">Configuración</h2>
-          </div>
+                  </div>
           <form class="settings-form" id="settings-form">
             <div class="form-group">
               <label for="controller-url">URL del Servidor Controlador</label>
               <input type="text" id="controller-url-input"
                 value="http://localhost:3001">
-            </div>
+                  </div>
             <div class="form-group">
               <label for="monitor-url">URL del Servidor Monitor</label>
               <input type="text" id="monitor-url-input"
                 value="http://localhost:3002">
-            </div>
+                </div>
             <div class="form-group">
               <label for="vlc-url">URL del Servidor VLC</label>
               <input type="text" id="vlc-url-input"
                 value="http://localhost:8080">
-            </div>
+              </div>
             <div class="form-group">
               <label for="heartbeat-interval">Intervalo de Heartbeat
                 (ms)</label>
@@ -851,11 +851,11 @@
               <label for="max-reconnect">Máximo de Intentos de
                 Reconexión</label>
               <input type="number" id="max-reconnect" value="5">
-            </div>
+          </div>
             <div class="form-group">
               <label for="reconnect-delay">Retraso de Reconexión (ms)</label>
               <input type="number" id="reconnect-delay" value="1000">
-            </div>
+        </div>
             <div class="form-actions">
               <button type="button" class="btn btn-danger"
                 id="reset-settings">Restablecer</button>

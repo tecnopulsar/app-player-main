@@ -137,6 +137,8 @@ app.get('/api/devices', (req, res) => {
         vlcCurrentItem: device.vlcData?.currentItem || null,
         systemState: device.systemState || null
     }));
+    console.log("🚀 ~ devices ~ devices:", devices)
+
 
     res.json({ success: true, devices });
 });
@@ -144,13 +146,12 @@ app.get('/api/devices', (req, res) => {
 // Ruta para obtener información detallada de un dispositivo
 app.get('/api/devices/:deviceId', (req, res) => {
     const { deviceId } = req.params;
-    const device = Array.from(connectedDevices.values()).find(d => d.id === deviceId);
+    let device = Array.from(connectedDevices.values()).find(d => d.id === deviceId);
 
     if (!device) {
         return res.status(404).json({ success: false, message: 'Dispositivo no encontrado' });
     }
-
-    res.json({
+    device = {
         success: true,
         device: {
             id: device.id,
@@ -167,7 +168,9 @@ app.get('/api/devices/:deviceId', (req, res) => {
             },
             systemState: device.systemState
         }
-    });
+    };
+    console.log("🚀 ~ device ~ device:", device)
+    res.json(device);
 });
 
 // Ruta para enviar comandos a dispositivos

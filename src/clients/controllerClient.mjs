@@ -309,6 +309,7 @@ class ControllerClient {
             console.log('✅ Datos del heartbeat preparados:', {
                 deviceId: heartbeatData.id,
                 vlcStatus: heartbeatData.vlc?.status?.status,
+                vlcPlaylist: heartbeatData.vlc?.playlist?.name,
                 hasSnapshot: !!heartbeatData.snapshot,
                 hasSystemState: !!heartbeatData.systemState
             });
