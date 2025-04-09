@@ -115,6 +115,153 @@ Detiene completamente la reproducción.
 GET http://localhost:3000/api/vlc/stop
 ```
 
+### Siguiente elemento
+
+```
+GET /api/vlc/next
+```
+
+Avanza al siguiente elemento en la playlist actual.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Siguiente elemento seleccionado"
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/vlc/next
+```
+
+### Elemento anterior
+
+```
+GET /api/vlc/previous
+```
+
+Retrocede al elemento anterior en la playlist actual.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Elemento anterior seleccionado"
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/vlc/previous
+```
+
+### Subir volumen
+
+```
+GET /api/vlc/volume/up
+```
+
+Aumenta el volumen del reproductor.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Volumen aumentado"
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/vlc/volume/up
+```
+
+### Bajar volumen
+
+```
+GET /api/vlc/volume/down
+```
+
+Disminuye el volumen del reproductor.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Volumen disminuido"
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/vlc/volume/down
+```
+
+### Silenciar
+
+```
+GET /api/vlc/mute
+```
+
+Silencia el reproductor.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Reproductor silenciado"
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/vlc/mute
+```
+
+### Activar sonido
+
+```
+GET /api/vlc/unmute
+```
+
+Activa el sonido del reproductor.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Sonido activado"
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/vlc/unmute
+```
+
+### Pantalla completa
+
+```
+GET /api/vlc/fullscreen
+```
+
+Activa el modo de pantalla completa.
+
+**Respuesta:**
+```json
+{
+    "success": true,
+    "message": "Modo de pantalla completa activado"
+}
+```
+
+**Ejemplo Postman:**
+```
+GET http://localhost:3000/api/vlc/fullscreen
+```
+
 ### Capturar snapshot
 
 ```
@@ -128,8 +275,8 @@ Captura una imagen de baja resolución (320x180) del contenido actual en reprodu
 {
     "success": true,
     "message": "Snapshot capturado correctamente",
-    "snapshotPath": "/home/tecno/app-player/public/screenshots/screenshot.jpg",
-    "snapshotURL": "/screenshots/screenshot.jpg"
+    "snapshotPath": "/home/tecno/app-player/public/screenshots/snapshot.jpg",
+    "snapshotURL": "/screenshots/snapshot.jpg"
 }
 ```
 

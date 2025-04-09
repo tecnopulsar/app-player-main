@@ -1,149 +1,123 @@
-# App Player WeTechar
+# App-Player
 
-Aplicación de reproducción de contenido multimedia desarrollada con Electron.js, diseñada para funcionar en dispositivos Raspberry Pi.
+Sistema de reproducción de contenido multimedia basado en VLC con control remoto.
 
-## 🚀 Características
+## Características
 
-- Interfaz gráfica moderna y responsiva
-- Gestión de servidor Express integrado
-- Monitoreo de estado de red
-- Visualización de estado de conexión
-- Sistema de reproducción de contenido multimedia con integración VLC
-- Control remoto vía API REST
-- Gestión de ventanas optimizada
-- Monitoreo de recursos del sistema
+- Reproducción de contenido multimedia usando VLC
+- Control remoto a través de API REST
+- Gestión de playlists
+- Captura de snapshots
+- Interfaz web para control y monitoreo
+- Sistema de logs detallado
+- Control de volumen y pantalla completa
+- Soporte para múltiples dispositivos
 
-## 🛠️ Tecnologías Utilizadas
+## Tecnologías utilizadas
 
-- Electron.js
 - Node.js
 - Express.js
-- VLC Media Player
-- Socket.IO
-- Python (para scripts de control)
+- VLC
+- Socket.IO (solo para monitoreo)
+- HTML/CSS/JavaScript
 
-## 📁 Estructura del Proyecto
+## Estructura del proyecto
 
 ```
 app-player/
-├── docs/                    # Documentación del proyecto
-├── homepage/                # Página web de presentación del proyecto
-├── info/                    # Información adicional
-├── lib/                     # Bibliotecas
-├── node_modules/            # Dependencias de Node.js
-├── public/                  # Archivos estáticos públicos
-├── src/                     # Código fuente de la aplicación
-│   ├── config/              # Configuraciones
-│   ├── interface/           # Componentes de interfaz
-│   ├── ipc/                 # Comunicación entre procesos
-│   ├── lib/                 # Bibliotecas internas
-│   ├── routes/              # Definición de rutas y endpoints
-│   ├── scripts/             # Scripts adicionales
-│   ├── servers/             # Configuración de servidores
-│   ├── services/            # Servicios de la aplicación
-│   ├── utils/               # Utilidades
-│   └── windows/             # Configuración de ventanas
-├── views/                   # Vistas y plantillas
-├── main.js                  # Punto de entrada principal
-├── package.json             # Configuración de npm
-├── player.html              # Interfaz del reproductor
-└── preload.js               # Script de precarga de Electron
+├── src/
+│   ├── config/           # Configuraciones
+│   ├── routes/           # Rutas API REST
+│   ├── clients/          # Clientes de control
+│   ├── utils/            # Utilidades
+│   └── server.js         # Servidor principal
+├── public/               # Archivos estáticos
+├── docs/                 # Documentación
+└── package.json
 ```
 
-### Rutas (src/routes)
-La aplicación utiliza un sistema modular de rutas organizado mediante un archivo de barril (`index.mjs`):
+## API Routes
 
-- `endpoints.mjs`: Rutas principales y generales de la aplicación
-- `vlcEndpoints.mjs`: Endpoints relacionados con el control de VLC
-- `systemEndpoints.mjs`: Endpoints para operaciones del sistema
-- `fileHandler.mjs`: Manejo de archivos y operaciones relacionadas
-- `appEndpoints.mjs`: Endpoints específicos de la aplicación
-- `playlistUploadHandler.mjs`: Manejo de carga y gestión de playlists
+El sistema expone las siguientes rutas API:
 
-Cada archivo de ruta exporta su router usando `export default`, y el archivo `index.mjs` los importa y combina en un único router para simplificar el uso en la aplicación.
+### Control de VLC
+- `GET /api/vlc/status` - Estado actual
+- `GET /api/vlc/play` - Iniciar reproducción
+- `GET /api/vlc/pause` - Pausar reproducción
+- `GET /api/vlc/stop` - Detener reproducción
+- `GET /api/vlc/next` - Siguiente elemento
+- `GET /api/vlc/previous` - Elemento anterior
+- `GET /api/vlc/volume/up` - Subir volumen
+- `GET /api/vlc/volume/down` - Bajar volumen
+- `GET /api/vlc/mute` - Silenciar
+- `GET /api/vlc/unmute` - Activar sonido
+- `GET /api/vlc/fullscreen` - Pantalla completa
+- `GET /api/vlc/snapshot` - Capturar snapshot
 
-### Uso de Rutas
+### Gestión de Playlists
+- `GET /api/playlists` - Listar playlists
+- `POST /api/playlists/upload` - Subir playlist
+- `DELETE /api/playlists/:name` - Eliminar playlist
 
-```javascript
-// Importar todas las rutas desde el archivo de barril
-import { endpoints } from './src/routes/index.mjs';
+### Sistema
+- `GET /api/system/info` - Información del sistema
+- `GET /api/system/status` - Estado del sistema
 
-// Configurar rutas en Express - Una sola línea configura todas las rutas
-app.use('/api', endpoints);
+Para más detalles sobre las rutas API, consulta la [documentación completa](docs/API_ROUTES.md).
+
+## Requisitos del sistema
+
+- Node.js >= 14.x
+- VLC >= 3.0
+- Sistema operativo: Linux/Windows/macOS
+
+## Instalación
+
+1. Clonar el repositorio:
+```bash
+git clone https://github.com/tu-usuario/app-player.git
+cd app-player
 ```
 
-## Estructura de Rutas API
+2. Instalar dependencias:
+```bash
+npm install
+```
 
-La aplicación expone las siguientes rutas API:
+3. Configurar variables de entorno:
+```bash
+cp .env.example .env
+# Editar .env con tus configuraciones
+```
 
-### Rutas del Sistema (`/api/system`)
-- `GET /api/system/info`: Obtiene información del sistema
-- `GET /api/system/network`: Obtiene información de red
-- `GET /api/system/status`: Obtiene estado del sistema
+4. Iniciar el servidor:
+```bash
+npm start
+```
 
-### Rutas de Playlist (`/api/playlist`)
-- `POST /api/playlist/upload`: Sube una nueva playlist
-- `GET /api/playlist/list`: Lista las playlists disponibles
-- `DELETE /api/playlist/:id`: Elimina una playlist
+## Uso
 
-### Rutas de VLC (`/api/vlc`)
-- `GET /api/vlc/status`: Obtiene estado de VLC
-- `POST /api/vlc/control`: Controla la reproducción
-- `GET /api/vlc/playlist`: Obtiene la playlist actual
+1. Acceder a la interfaz web:
+```
+http://localhost:3000
+```
 
-### Rutas de Aplicación (`/api/app`)
-- `GET /api/app/version`: Obtiene versión de la aplicación
-- `GET /api/app/config`: Obtiene configuración
+2. Controlar VLC a través de la API:
+```
+http://localhost:3000/api/vlc/status
+http://localhost:3000/api/vlc/play
+http://localhost:3000/api/vlc/pause
+# etc...
+```
 
-### Rutas de Archivos (`/api/files`)
-- `GET /api/files/list`: Lista archivos disponibles
-- `POST /api/files/upload`: Sube archivos
-- `DELETE /api/files/:id`: Elimina archivos
+## Contribución
 
-## Estructura del Proyecto
+1. Fork el repositorio
+2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abrir un Pull Request
 
-### Utilidades (src/utils)
-La aplicación utiliza un sistema de utilidades para centralizar funcionalidades comunes:
+## Licencia
 
-- **networkUtils.js**: Funciones relacionadas con la obtención de información de red
-  - `getBasicNetworkInfo()`: Información básica de interfaces de red
-  - `getDetailedNetworkInfo()`: Información detallada mediante script bash
-  - `getLocalIP()`: Obtiene la IP local principal
-  - `getMACAddress()`: Obtiene la dirección MAC principal
-
-- **templateUtils.js**: Funciones para el manejo de plantillas
-  - `renderTemplate()`: Renderiza plantillas HTML con variables
-
-- **logUtils.js**: Sistema centralizado de logging
-  - `initLogs()`: Inicializa el sistema de logs
-  - `sendLog()`: Envía mensajes de log al frontend
-  - `restoreLogs()`: Restaura las funciones originales de console
-
-- **vlcStatus.js**: Utilidades para consultar el estado de VLC
-  - `getVLCStatus()`: Obtiene el estado actual del reproductor
-  - `getPlaylistInfo()`: Obtiene información sobre la playlist actual
-
-## 🔧 Requisitos del Sistema
-
-- **Hardware**: 
-  - Raspberry Pi 4 o superior
-  - Mínimo 2 GB de RAM
-  - Conexión a Internet para la instalación de dependencias y actualizaciones
-
-- **Software**:
-  - Sistema operativo compatible (Raspbian, Ubuntu, etc.)
-  - Node.js (versión 14 o superior)
-  - npm (gestor de paquetes de Node.js)
-  - VLC Media Player (debe estar instalado y configurado para la interfaz HTTP)
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Para más detalles, consulta el archivo `LICENSE.md`.
-
-## 📞 Contacto
-
-Para preguntas o soporte, puedes contactar a [tu nombre o correo electrónico].
-
----
-
-¡Gracias por usar App Player WeTechar! Esperamos que disfrutes de la experiencia de reproducción multimedia.
+Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
