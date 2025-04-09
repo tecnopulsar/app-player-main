@@ -219,12 +219,59 @@ async function sendCommand(action) {
 
     try {
         console.log(`Enviando comando ${action} al dispositivo ${selectedDeviceId}`);
-        const response = await fetch(`/api/devices/${selectedDeviceId}/command`, {
-            method: 'POST',
+
+        // Obtener la IP del dispositivo seleccionado
+        const device = devices.find(d => d.id === selectedDeviceId);
+        if (!device) {
+            throw new Error('Dispositivo no encontrado');
+        }
+
+        // Construir la URL del dispositivo
+        const deviceUrl = `http://${device.ip}:3000`;
+
+        // Mapear acciones a rutas de la API
+        let endpoint = '';
+        switch (action) {
+            case 'PLAY':
+                endpoint = '/api/vlc/play';
+                break;
+            case 'PAUSE':
+                endpoint = '/api/vlc/pause';
+                break;
+            case 'STOP':
+                endpoint = '/api/vlc/stop';
+                break;
+            case 'NEXT':
+                endpoint = '/api/vlc/next';
+                break;
+            case 'PREVIOUS':
+                endpoint = '/api/vlc/previous';
+                break;
+            case 'VOLUME_UP':
+                endpoint = '/api/vlc/volume/up';
+                break;
+            case 'VOLUME_DOWN':
+                endpoint = '/api/vlc/volume/down';
+                break;
+            case 'MUTE':
+                endpoint = '/api/vlc/mute';
+                break;
+            case 'UNMUTE':
+                endpoint = '/api/vlc/unmute';
+                break;
+            case 'FULLSCREEN':
+                endpoint = '/api/vlc/fullscreen';
+                break;
+            default:
+                throw new Error(`Comando no soportado: ${action}`);
+        }
+
+        // Enviar la solicitud a la API del dispositivo
+        const response = await fetch(`${deviceUrl}${endpoint}`, {
+            method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ action })
+            }
         });
 
         const data = await response.json();
