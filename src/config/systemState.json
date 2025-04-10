@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-04-10T13:56:03.923Z",
+  "timestamp": "2025-04-10T14:39:43.182Z",
   "system": {
     "hostname": "base",
     "platform": "linux",
@@ -7,12 +7,12 @@
     "release": "6.12.18-v8+",
     "cpus": 4,
     "totalMem": 3923357696,
-    "freeMem": 1747243008,
-    "uptime": 262258.22,
+    "freeMem": 1657520128,
+    "uptime": 264877.49,
     "loadavg": [
-      5.45,
-      2.5,
-      2.75
+      6.56,
+      5.27,
+      4.07
     ],
     "network": {
       "lo": {
@@ -34,7 +34,7 @@
         "internal": false
       }
     },
-    "timestamp": "2025-04-10T13:56:03.771Z"
+    "timestamp": "2025-04-10T14:39:43.040Z"
   },
   "storage": {
     "playlistDirectory": "./public/videos",
@@ -45,9 +45,9 @@
       "fileCount": 0
     },
     "totalSpace": 61641601024,
-    "freeSpace": 40126599168,
-    "usedSpace": 21515001856,
-    "timestamp": "2025-04-10T13:56:03.866Z"
+    "freeSpace": 40126160896,
+    "usedSpace": 21515440128,
+    "timestamp": "2025-04-10T14:39:43.093Z"
   },
   "vlc": {
     "connected": true,
@@ -55,8 +55,8 @@
     "paused": false,
     "stopped": false,
     "currentItem": "InstitucionalWetechar.mp4",
-    "position": 0.31466829776764,
-    "time": 92,
+    "position": 0.72533649206161,
+    "time": 214,
     "length": 295,
     "volume": 0,
     "random": false,
@@ -77,7 +77,7 @@
       "port": 8080
     },
     "version": "1.0.0",
-    "startTime": "2025-04-10T13:56:03.913Z",
+    "startTime": "2025-04-10T14:39:43.148Z",
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
@@ -95,6 +95,6 @@
   },
   "snapshot": {
     "url": "public/snapshots/snapshot.jpg",
-    "createdAt": "2025-04-10T13:55:55.371Z"
+    "createdAt": "2025-04-10T14:39:41.509Z"
   }
 }

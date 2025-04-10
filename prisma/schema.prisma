@@ -1,0 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo para la agenda de reproducción
+model Schedule {
+  id          Int       @id @default(autoincrement())
+  name        String    // Nombre de la programación
+  description String?   // Descripción opcional
+  playlist    String    // Nombre de la playlist a reproducir
+  startTime   DateTime  // Hora de inicio
+  endTime     DateTime  // Hora de finalización
+  daysOfWeek  Int[]     // Días de la semana (0-6, donde 0 es domingo)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  executions  Execution[] // Relación con las ejecuciones
+}
+
+// Modelo para registrar las ejecuciones de la agenda
+model Execution {
+  id         Int      @id @default(autoincrement())
+  scheduleId Int      // ID de la programación
+  startTime  DateTime @default(now()) // Hora de inicio de la ejecución
+  endTime    DateTime? // Hora de finalización (null si aún está en ejecución)
+  status     String   // Estado de la ejecución (pending, running, completed, failed)
+  playlist   String   // Nombre de la playlist ejecutada
+  schedule   Schedule @relation(fields: [scheduleId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Modelo para la configuración del sistema
+model SystemConfig {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique // Clave de configuración
+  value     String   // Valor de configuración
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+} 
