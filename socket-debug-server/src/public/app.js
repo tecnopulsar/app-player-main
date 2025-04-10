@@ -9,10 +9,16 @@ const systemInfo = document.getElementById('system-info');
 const systemResources = document.getElementById('system-resources');
 const networkInfo = document.getElementById('network-info');
 const vlcInfo = document.getElementById('vlc-info');
+const deviceSnapshot = document.getElementById('device-snapshot');
+const noSnapshotMessage = document.getElementById('no-snapshot-message');
 
 // Estado de la aplicación
 let devices = [];
 let selectedDeviceId = null;
+let snapshotInterval = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY = 5000; // 5 segundos
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
@@ -39,6 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchDevices() {
     try {
         const response = await fetch('/api/devices');
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
         const data = await response.json();
 
         if (data.success) {
@@ -58,14 +67,32 @@ async function fetchDevices() {
                     deviceSelect.value = '';
                     deviceSelect.disabled = true;
                     updateDeviceDetails(null);
+                    stopSnapshotInterval();
                 }
             }
+            // Resetear contador de reconexión si la conexión es exitosa
+            reconnectAttempts = 0;
         } else {
-            console.error('Error al obtener dispositivos:', data.message);
+            throw new Error(data.message || 'Error desconocido');
         }
     } catch (error) {
         console.error('Error al obtener dispositivos:', error);
+        handleConnectionError();
     }
+}
+
+function handleConnectionError() {
+    reconnectAttempts++;
+    console.log(`Intento de reconexión ${reconnectAttempts} de ${MAX_RECONNECT_ATTEMPTS}`);
+
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.error('Máximo número de intentos de reconexión alcanzado');
+        alert('Error de conexión con el servidor. Por favor, verifica la conexión y recarga la página.');
+        return;
+    }
+
+    // Intentar reconectar después de un delay
+    setTimeout(fetchDevices, RECONNECT_DELAY);
 }
 
 function updateDevicesList() {
@@ -175,6 +202,7 @@ function handleDeviceSelection() {
 function updateDeviceDetails(device) {
     if (!device) {
         deviceDetails.innerHTML = '<p>Selecciona un dispositivo para ver su información</p>';
+        stopSnapshotInterval();
         return;
     }
 
@@ -197,6 +225,13 @@ function updateDeviceDetails(device) {
 
     // Actualizar información del sistema
     updateDeviceInfo(device);
+
+    // Iniciar actualización de snapshot si el dispositivo está activo
+    if (isActive) {
+        startSnapshotInterval(device);
+    } else {
+        stopSnapshotInterval();
+    }
 }
 
 function updateLastUpdateTime() {
@@ -421,4 +456,47 @@ function formatDuration(seconds) {
 // Función auxiliar para añadir ceros a la izquierda
 function padZero(num) {
     return num.toString().padStart(2, '0');
+}
+
+function startSnapshotInterval(device) {
+    // Detener el intervalo anterior si existe
+    stopSnapshotInterval();
+
+    // Función para actualizar el snapshot
+    const updateSnapshot = () => {
+        try {
+            // Construir la URL directa al snapshot del cliente
+            const snapshotUrl = `http://${device.ip}:3000/snapshots/snapshot.jpg`;
+
+            // Agregar timestamp para evitar el caché del navegador
+            const timestamp = new Date().getTime();
+            deviceSnapshot.src = `${snapshotUrl}?t=${timestamp}`;
+            deviceSnapshot.style.display = 'block';
+            noSnapshotMessage.style.display = 'none';
+
+            // Manejar errores de carga de imagen
+            deviceSnapshot.onerror = () => {
+                console.error('Error al cargar el snapshot');
+                deviceSnapshot.style.display = 'none';
+                noSnapshotMessage.style.display = 'block';
+            };
+        } catch (error) {
+            console.error('Error al actualizar snapshot:', error);
+            deviceSnapshot.style.display = 'none';
+            noSnapshotMessage.style.display = 'block';
+        }
+    };
+
+    // Actualizar inmediatamente y luego cada 5 segundos
+    updateSnapshot();
+    snapshotInterval = setInterval(updateSnapshot, 5000);
+}
+
+function stopSnapshotInterval() {
+    if (snapshotInterval) {
+        clearInterval(snapshotInterval);
+        snapshotInterval = null;
+    }
+    deviceSnapshot.style.display = 'none';
+    noSnapshotMessage.style.display = 'block';
 } 
