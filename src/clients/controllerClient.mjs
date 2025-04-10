@@ -14,7 +14,8 @@ class ControllerClient {
             verboseLogs: appConfig.controller?.verboseLogs || false,
             maxReconnectAttempts: appConfig.controller?.maxReconnectAttempts || 5,
             reconnectDelay: appConfig.controller?.reconnectDelay || 1000,
-            connectionTimeout: appConfig.controller?.connectionTimeout || 20000
+            connectionTimeout: appConfig.controller?.connectionTimeout || 20000,
+            serverCheckInterval: appConfig.controller?.serverCheckInterval || 30000
         };
 
         this.state = {
@@ -35,8 +36,10 @@ class ControllerClient {
             },
             reconnectAttempts: 0,
             intervals: {
-                heartbeat: null
-            }
+                heartbeat: null,
+                serverCheck: null
+            },
+            serverAvailable: false
         };
     }
 
@@ -52,6 +55,8 @@ class ControllerClient {
             await this.checkServersAvailability();
             this.setupEventHandlers();
 
+            this.startServerCheck();
+
             // Si el servidor controlador no está disponible, iniciar el proceso de reconexión
             if (!this.state.sockets.controller?.connected) {
                 console.log('⚠️ Servidor controlador no disponible al inicio. Iniciando proceso de reconexión...');
@@ -64,10 +69,37 @@ class ControllerClient {
         }
     }
 
+    startServerCheck() {
+        if (this.state.intervals.serverCheck) return;
+
+        console.log(`🔄 Iniciando verificación periódica del servidor (intervalo: ${this.config.serverCheckInterval}ms)`);
+
+        this.state.intervals.serverCheck = setInterval(async () => {
+            await this.checkServerAvailability(this.config.serverUrl)
+                .then(available => {
+                    if (available && !this.state.serverAvailable) {
+                        console.log('✅ Servidor controlador disponible. Intentando reconectar...');
+                        this.state.serverAvailable = true;
+                        this.state.reconnectAttempts = 0;
+                        this.reconnectController();
+                    }
+                    else if (!available && this.state.serverAvailable) {
+                        console.log('⚠️ Servidor controlador ya no disponible.');
+                        this.state.serverAvailable = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error al verificar disponibilidad del servidor:', error?.message || 'Error desconocido');
+                });
+        }, this.config.serverCheckInterval);
+    }
+
     async checkServersAvailability() {
         const [controllerAvailable] = await Promise.all([
             this.checkServerAvailability(this.config.serverUrl)
         ]);
+
+        this.state.serverAvailable = controllerAvailable;
 
         if (controllerAvailable) {
             this.connectToController();
@@ -133,6 +165,8 @@ class ControllerClient {
         this.updateDeviceStatus('active');
         this.state.sockets.controller.emit('AUTHENTICATE', this.state.deviceInfo);
         this.startHeartbeat();
+
+        this.state.reconnectAttempts = 0;
     }
 
     handleAuthSuccess({ id, name }) {
@@ -359,8 +393,13 @@ class ControllerClient {
     }
 
     handleReconnection(type, connectFn) {
+        if (this.state.serverAvailable) {
+            this.state.reconnectAttempts = 0;
+        }
+
         if (this.state.reconnectAttempts >= this.config.maxReconnectAttempts) {
             console.log(`⚠️ Máximo de intentos de reconexión para ${type} alcanzado (${this.state.reconnectAttempts}/${this.config.maxReconnectAttempts})`);
+            console.log(`🔄 Continuando con verificación periódica del servidor...`);
             return;
         }
 
@@ -451,6 +490,12 @@ class ControllerClient {
 
     disconnect() {
         this.stopHeartbeat();
+
+        if (this.state.intervals.serverCheck) {
+            clearInterval(this.state.intervals.serverCheck);
+            this.state.intervals.serverCheck = null;
+            this.log('Verificación periódica del servidor detenida');
+        }
 
         if (this.state.sockets.controller) {
             this.state.sockets.controller.disconnect();
