@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-04-10T14:51:53.574Z",
+  "timestamp": "2025-04-10T15:33:49.477Z",
   "system": {
     "hostname": "base",
     "platform": "linux",
@@ -7,12 +7,12 @@
     "release": "6.12.18-v8+",
     "cpus": 4,
     "totalMem": 3923357696,
-    "freeMem": 1630588928,
-    "uptime": 265607.88,
+    "freeMem": 1857187840,
+    "uptime": 268123.84,
     "loadavg": [
-      5.64,
-      6.23,
-      5.42
+      1.86,
+      1.82,
+      2.21
     ],
     "network": {
       "lo": {
@@ -34,7 +34,7 @@
         "internal": false
       }
     },
-    "timestamp": "2025-04-10T14:51:53.432Z"
+    "timestamp": "2025-04-10T15:33:49.398Z"
   },
   "storage": {
     "playlistDirectory": "./public/videos",
@@ -45,19 +45,19 @@
       "fileCount": 0
     },
     "totalSpace": 61641601024,
-    "freeSpace": 40125689856,
-    "usedSpace": 21515911168,
-    "timestamp": "2025-04-10T14:51:53.508Z"
+    "freeSpace": 40107061248,
+    "usedSpace": 21534539776,
+    "timestamp": "2025-04-10T15:33:49.435Z"
   },
   "vlc": {
     "connected": true,
     "playing": true,
     "paused": false,
     "stopped": false,
-    "currentItem": "InstitucionalWetechar.mp4",
-    "position": 0.73804903030396,
-    "time": 217,
-    "length": 295,
+    "currentItem": "ForBiggerBlazes.mp4",
+    "position": 0.62578791379929,
+    "time": 9,
+    "length": 15,
     "volume": 0,
     "random": false,
     "repeat": false,
@@ -77,16 +77,16 @@
       "port": 8080
     },
     "version": "1.0.0",
-    "startTime": "2025-04-10T14:51:53.560Z",
+    "startTime": "2025-04-10T15:33:49.473Z",
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
-    "playlistName": "wetechar",
-    "playlistPath": "public/videos/wetechar/wetechar.m3u",
-    "lastLoaded": "2025-04-10T00:01:24.852Z",
+    "playlistName": "VideosCortos",
+    "playlistPath": "public/videos/VideosCortos/VideosCortos.m3u",
+    "lastLoaded": "2025-04-10T14:57:29.030Z",
     "isActive": true,
     "currentIndex": 1,
-    "fileCount": 1,
+    "fileCount": 3,
     "isDefault": false
   },
   "defaultPlaylist": {
@@ -95,6 +95,6 @@
   },
   "snapshot": {
     "url": "public/snapshots/snapshot.jpg",
-    "createdAt": "2025-04-10T14:50:51.252Z"
+    "createdAt": "2025-04-10T15:33:46.139Z"
   }
 }

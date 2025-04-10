@@ -106,6 +106,68 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Panel para la fecha y hora del sistema -->
+            <div class="datetime-panel" id="datetimePanel">
+                <div class="datetime-header">
+                    <h3>Fecha y Hora del Sistema</h3>
+                    <button class="btn btn-outline" id="refreshDateTime"><i
+                            class="fas fa-sync"></i> Actualizar</button>
+                </div>
+                <div class="datetime-content">
+                    <div class="datetime-current">
+                        <h4>Fecha y Hora Actual</h4>
+                        <div class="datetime-value" id="currentDateTime">
+                            --:--:--</div>
+                        <div class="datetime-info">
+                            <span id="timezoneName">Zona horaria: --</span>
+                            <span id="ntpStatus">NTP: --</span>
+                        </div>
+                    </div>
+                    <div class="datetime-setting">
+                        <h4>Ajustar Fecha y Hora</h4>
+                        <div class="form-group">
+                            <label for="newDatetime">Nueva fecha y hora:</label>
+                            <input type="datetime-local" id="newDatetime"
+                                name="newDatetime">
+                        </div>
+                        <div class="form-group">
+                            <label for="timezoneSelect">Zona horaria:</label>
+                            <select id="timezoneSelect" name="timezone">
+                                <option value="America/Santiago">
+                                    America/Santiago</option>
+                                <option value="America/Bogota">America/Bogota
+                                </option>
+                                <option value="America/Mexico_City">
+                                    America/Mexico_City</option>
+                                <option value="America/Lima">America/Lima
+                                </option>
+                                <option value="Europe/Madrid">Europe/Madrid
+                                </option>
+                                <option value="UTC">UTC</option>
+                            </select>
+                        </div>
+                        <div class="toggle-group">
+                            <label for="ntpEnabled">Sincronización NTP:</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="ntpEnabled">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="datetime-actions">
+                            <button class="btn btn-primary"
+                                id="setDateTime">Establecer Fecha y
+                                Hora</button>
+                            <button class="btn btn-secondary"
+                                id="syncNow">Sincronizar Ahora</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notificación para mensajes de confirmación -->
+            <div class="notification" id="notification">Operación completada con
+                éxito</div>
         </main>
 
         <footer>

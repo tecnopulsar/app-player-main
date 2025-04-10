@@ -20,6 +20,234 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 5000; // 5 segundos
 
+// Módulo para el manejo de fecha y hora
+const DateTimeModule = (() => {
+    // Elementos del DOM
+    const elements = {
+        panel: document.getElementById('datetimePanel'),
+        currentDateTime: document.getElementById('currentDateTime'),
+        timezoneName: document.getElementById('timezoneName'),
+        ntpStatus: document.getElementById('ntpStatus'),
+        newDatetime: document.getElementById('newDatetime'),
+        timezoneSelect: document.getElementById('timezoneSelect'),
+        ntpEnabled: document.getElementById('ntpEnabled'),
+        refreshBtn: document.getElementById('refreshDateTime'),
+        setDateTimeBtn: document.getElementById('setDateTime'),
+        syncNowBtn: document.getElementById('syncNow'),
+        notification: document.getElementById('notification')
+    };
+
+    // URLs de la API
+    const apiUrls = {
+        getDateTime: '/api/system/datetime',
+        setDateTime: '/api/system/datetime',
+        setNtp: '/api/system/datetime/ntp',
+        syncNtp: '/api/system/datetime/sync'
+    };
+
+    // Función para formatear la fecha
+    const formatDateTime = (dateString) => {
+        const date = new Date(dateString);
+        return new Intl.DateTimeFormat('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        }).format(date);
+    };
+
+    // Función para obtener la fecha y hora actual en formato para input
+    const getCurrentDateTimeForInput = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
+    // Función para mostrar notificaciones
+    const showNotification = (message, type = 'success') => {
+        elements.notification.textContent = message;
+        elements.notification.className = 'notification';
+
+        if (type === 'error') {
+            elements.notification.classList.add('error');
+        } else if (type === 'warning') {
+            elements.notification.classList.add('warning');
+        }
+
+        elements.notification.classList.add('show');
+
+        setTimeout(() => {
+            elements.notification.classList.remove('show');
+        }, 3000);
+    };
+
+    // Función para obtener la fecha y hora actual del sistema
+    const fetchDateTime = async () => {
+        try {
+            const response = await fetch(apiUrls.getDateTime);
+            if (!response.ok) {
+                throw new Error('Error al obtener la fecha y hora');
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                updateDateTimeDisplay(data.datetime);
+                return data.datetime;
+            } else {
+                throw new Error(data.error || 'Error desconocido');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification(`Error: ${error.message}`, 'error');
+        }
+    };
+
+    // Función para actualizar la visualización de fecha y hora
+    const updateDateTimeDisplay = (datetime) => {
+        elements.currentDateTime.textContent = formatDateTime(datetime.current);
+
+        // Extraer la zona horaria del string completo
+        const timezoneMatch = datetime.timezone.match(/Time zone: ([^\s]+)/);
+        const timezone = timezoneMatch ? timezoneMatch[1] : 'Desconocida';
+        elements.timezoneName.textContent = `Zona horaria: ${timezone}`;
+
+        // Extraer el estado de NTP
+        const ntpActive = datetime.ntpStatus.includes('active');
+        elements.ntpStatus.textContent = `NTP: ${ntpActive ? 'Activo' : 'Inactivo'}`;
+
+        // Actualizar el estado del toggle de NTP
+        elements.ntpEnabled.checked = ntpActive;
+
+        // Establecer el valor actual en el input de fecha y hora
+        elements.newDatetime.value = getCurrentDateTimeForInput();
+    };
+
+    // Función para establecer la fecha y hora del sistema
+    const setDateTime = async () => {
+        try {
+            const newDateTime = elements.newDatetime.value;
+            const timezone = elements.timezoneSelect.value;
+
+            if (!newDateTime) {
+                showNotification('Por favor, seleccione una fecha y hora', 'warning');
+                return;
+            }
+
+            const response = await fetch(apiUrls.setDateTime, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    datetime: new Date(newDateTime).toISOString(),
+                    timezone: timezone
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al establecer la fecha y hora');
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                showNotification('Fecha y hora actualizadas correctamente');
+                fetchDateTime(); // Actualizar la visualización
+            } else {
+                throw new Error(data.error || 'Error desconocido');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification(`Error: ${error.message}`, 'error');
+        }
+    };
+
+    // Función para cambiar el estado de NTP
+    const toggleNtpStatus = async () => {
+        try {
+            const enabled = elements.ntpEnabled.checked;
+
+            const response = await fetch(apiUrls.setNtp, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ enabled })
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al configurar NTP');
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                showNotification(`NTP ${enabled ? 'activado' : 'desactivado'} correctamente`);
+                fetchDateTime(); // Actualizar la visualización
+            } else {
+                throw new Error(data.error || 'Error desconocido');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification(`Error: ${error.message}`, 'error');
+
+            // Revertir el cambio en el UI si hay un error
+            elements.ntpEnabled.checked = !elements.ntpEnabled.checked;
+        }
+    };
+
+    // Función para sincronizar con NTP
+    const syncNow = async () => {
+        try {
+            const response = await fetch(apiUrls.syncNtp, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al sincronizar con NTP');
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                showNotification('Sincronización con NTP iniciada');
+                fetchDateTime(); // Actualizar la visualización
+            } else {
+                throw new Error(data.error || 'Error desconocido');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification(`Error: ${error.message}`, 'error');
+        }
+    };
+
+    // Inicializar el módulo
+    const init = () => {
+        // Obtener la fecha y hora actual
+        fetchDateTime();
+
+        // Configurar los eventos
+        elements.refreshBtn.addEventListener('click', fetchDateTime);
+        elements.setDateTimeBtn.addEventListener('click', setDateTime);
+        elements.ntpEnabled.addEventListener('change', toggleNtpStatus);
+        elements.syncNowBtn.addEventListener('click', syncNow);
+
+        // Actualizar cada minuto
+        setInterval(fetchDateTime, 60000);
+    };
+
+    return {
+        init
+    };
+})();
+
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     // Cargar dispositivos al iniciar
@@ -39,6 +267,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Actualizar automáticamente cada 5 segundos
     setInterval(fetchDevices, 5000);
+
+    // Inicializar el módulo de fecha y hora
+    DateTimeModule.init();
 });
 
 // Funciones principales
@@ -331,21 +562,6 @@ async function sendCommand(action) {
             button.classList.remove('loading');
         }
     }
-}
-
-// Función para mostrar notificaciones
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-
-    document.body.appendChild(notification);
-
-    // Remover la notificación después de 3 segundos
-    setTimeout(() => {
-        notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
 }
 
 // Función para actualizar la información del dispositivo
