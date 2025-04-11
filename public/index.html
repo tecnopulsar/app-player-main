@@ -5,19 +5,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>App Player Dashboard</title>
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
-      --primary-color: #2c3e50;
-      --secondary-color: #34495e;
-      --success-color: #27ae60;
-      --error-color: #c0392b;
-      --warning-color: #f39c12;
-      --info-color: #3498db;
-      --sidebar-width: 300px;
-      --monitor-color: #8e44ad;
+      --primary-color: #1e293b;
+      --secondary-color: #334155;
+      --accent-color: #3b82f6;
+      --success-color: #22c55e;
+      --warning-color: #f59e0b;
+      --error-color: #ef4444;
+      --text-color: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border-color: #475569;
+      --card-bg: #1e293b;
+      --header-height: 60px;
     }
 
     * {
@@ -26,670 +29,298 @@
       box-sizing: border-box;
     }
 
+    html,
+    body {
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      background-color: var(--primary-color);
+    }
+
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f6fa;
-      color: #2c3e50;
+      color: var(--text-color);
+      line-height: 1.5;
+      font-size: 18px;
     }
 
     .dashboard {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    .main-content {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-    }
-
-    .sidebar {
-      width: var(--sidebar-width);
-      background-color: var(--primary-color);
-      color: white;
-      padding: 20px;
-      overflow-y: auto;
-    }
-
-    .sidebar-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .sidebar-header h2 {
-      margin-left: 10px;
-    }
-
-    .sidebar-menu {
-      list-style: none;
-    }
-
-    .sidebar-menu li {
-      margin-bottom: 10px;
-    }
-
-    .sidebar-menu a {
-      display: flex;
-      align-items: center;
-      color: white;
-      text-decoration: none;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(320px, 1fr));
+      grid-template-rows: 60px 1fr 1fr;
+      height: 100vh;
+      width: 100vw;
       padding: 10px;
-      border-radius: 5px;
-      transition: background-color 0.3s;
+      gap: 10px;
+      box-sizing: border-box;
     }
 
-    .sidebar-menu a:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .sidebar-menu a.active {
-      background-color: var(--info-color);
-    }
-
-    .sidebar-menu i {
-      margin-right: 10px;
-      width: 20px;
-      text-align: center;
-    }
-
-    .card {
-      background-color: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-
-    .card-header {
+    .header {
+      grid-column: 1 / 4;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #eee;
+      padding: 0 15px;
+      background-color: var(--secondary-color);
+      border-radius: 8px;
     }
 
-    .card-title {
-      font-size: 1.2rem;
-      font-weight: 600;
+    .header h1 {
+      font-size: 32px;
     }
 
-    .card-subtitle {
-      font-size: 0.9rem;
-      color: #7f8c8d;
+    .header .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .status-indicator {
-      display: inline-block;
+    .status-icon {
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      margin-right: 5px;
-    }
-
-    .status-online {
       background-color: var(--success-color);
     }
 
-    .status-offline {
-      background-color: var(--error-color);
+    .timestamp {
+      color: var(--text-secondary);
+      font-size: 18px;
     }
 
-    .status-warning {
-      background-color: var(--warning-color);
-    }
-
-    .status-monitor {
-      background-color: var(--monitor-color);
-    }
-
-    .btn {
-      padding: 8px 15px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: background-color 0.3s;
-    }
-
-    .btn-primary {
-      background-color: var(--info-color);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background-color: #2980b9;
-    }
-
-    .btn-success {
-      background-color: var(--success-color);
-      color: white;
-    }
-
-    .btn-success:hover {
-      background-color: #219653;
-    }
-
-    .btn-danger {
-      background-color: var(--error-color);
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background-color: #a93226;
-    }
-
-    .btn-warning {
-      background-color: var(--warning-color);
-      color: white;
-    }
-
-    .btn-warning:hover {
-      background-color: #d35400;
-    }
-
-    .btn-monitor {
-      background-color: var(--monitor-color);
-      color: white;
-    }
-
-    .btn-monitor:hover {
-      background-color: #6c3483;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-    }
-
-    .device-card {
-      background-color: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 20px;
-      transition: transform 0.3s;
-    }
-
-    .device-card:hover {
-      transform: translateY(-5px);
-    }
-
-    .device-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-    }
-
-    .device-name {
-      font-size: 1.2rem;
-      font-weight: 600;
-    }
-
-    .device-id {
-      font-size: 0.8rem;
-      color: #7f8c8d;
-    }
-
-    .device-info {
-      margin-bottom: 15px;
-    }
-
-    .device-info p {
-      margin-bottom: 5px;
-      display: flex;
-      align-items: center;
-    }
-
-    .device-info i {
-      margin-right: 10px;
-      width: 20px;
-      text-align: center;
-    }
-
-    .device-actions {
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .snapshot-container {
-      width: 100%;
-      height: 200px;
-      background-color: #f5f6fa;
-      border-radius: 5px;
+    .card {
+      background-color: var(--secondary-color);
+      border-radius: 8px;
+      padding: 12px;
       overflow: hidden;
-      margin-bottom: 15px;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
+      min-height: 0;
+      border: 2px solid var(--accent-color);
     }
 
-    .snapshot-container img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
+    .card-header {
+      flex-shrink: 0;
+      margin-bottom: 12px;
     }
 
-    .snapshot-placeholder {
-      color: #7f8c8d;
-      text-align: center;
+    .card-header h2 {
+      font-size: 24px;
+      color: var(--accent-color);
+    }
+
+    .system-card {
+      grid-column: 1 / 2;
+      grid-row: 2 / 3;
+    }
+
+    .network-card {
+      grid-column: 1 / 2;
+      grid-row: 3 / 4;
+    }
+
+    .vlc-card {
+      grid-column: 2 / 3;
+      grid-row: 2 / 3;
+      background-color: var(--secondary-color);
+      border-radius: 8px;
+      padding: 15px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     .vlc-status {
       display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .info-item {
+      display: flex;
       align-items: center;
-      margin-bottom: 10px;
+      gap: 10px;
+      font-size: 18px;
+      color: var(--text-color);
+    }
+
+    .vlc-time {
+      font-size: 18px;
+      color: var(--text-color);
+      margin-top: 10px;
+    }
+
+    .vlc-progress {
+      height: 16px;
+      width: 100%;
+      background-color: var(--primary-color);
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .vlc-progress-fill {
+      height: 100%;
+      background-color: var(--success-color);
+      border-radius: 8px;
+    }
+
+    .snapshot-img {
+      max-width: 100%;
+      max-height: 120px;
+      border-radius: 6px;
+      border: 2px solid var(--accent-color);
+    }
+
+    .snapshot-time {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 5px;
+    }
+
+    .storage-card {
+      grid-column: 2 / 3;
+      grid-row: 3 / 4;
+    }
+
+    .app-card {
+      grid-column: 3 / 4;
+      grid-row: 2 / 3;
+    }
+
+    .playlist-card {
+      grid-column: 3 / 4;
+      grid-row: 3 / 4;
+    }
+
+    .progress-bar {
+      height: 12px;
+      width: 100%;
+      background-color: var(--primary-color);
+      border-radius: 6px;
+      margin-top: 5px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: var(--accent-color);
+      border-radius: 6px;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 16px;
+      margin-top: 5px;
+    }
+
+    .network-interfaces {
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .interface {
+      background-color: var(--primary-color);
+      border-radius: 6px;
+      padding: 8px;
+    }
+
+    .interface-header {
+      font-weight: bold;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .interface-header i {
+      color: var(--accent-color);
+    }
+
+    /* Estilos específicos de cartas */
+    .vlc-status .playing i {
+      color: var(--success-color);
+    }
+
+    .vlc-status .paused i {
+      color: var(--warning-color);
+    }
+
+    .vlc-status div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: var(--primary-color);
+      border-radius: 6px;
+      padding: 8px;
+      flex: 1;
     }
 
     .vlc-status i {
-      margin-right: 10px;
-      font-size: 1.2rem;
+      color: var(--accent-color);
+      font-size: 24px;
+      margin-bottom: 5px;
     }
 
-    .vlc-status.playing i {
+    .vlc-status .label {
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .vlc-status .playing i {
       color: var(--success-color);
     }
 
-    .vlc-status.paused i {
+    .vlc-status .paused i {
       color: var(--warning-color);
     }
 
-    .vlc-status.stopped i {
+    .vlc-status .stopped i {
       color: var(--error-color);
     }
 
-    .playlist-info {
-      margin-bottom: 15px;
-    }
-
-    .playlist-name {
-      font-weight: 600;
-      margin-bottom: 5px;
-    }
-
-    .playlist-details {
-      font-size: 0.9rem;
-      color: #7f8c8d;
-    }
-
-    .command-panel {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 15px;
-    }
-
-    .command-btn {
-      padding: 8px 12px;
-      border: none;
-      border-radius: 5px;
-      background-color: var(--secondary-color);
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-
-    .command-btn:hover {
-      background-color: #2c3e50;
-    }
-
-    .command-btn i {
-      margin-right: 5px;
-    }
-
-    .refresh-btn {
-      background-color: transparent;
-      border: none;
-      color: var(--info-color);
-      cursor: pointer;
-      font-size: 1.2rem;
-      transition: transform 0.3s;
-    }
-
-    .refresh-btn:hover {
-      transform: rotate(180deg);
-    }
-
-    .server-status {
-      display: flex;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .server-status i {
-      margin-right: 10px;
-      font-size: 1.2rem;
-    }
-
-    .server-status.online i {
-      color: var(--success-color);
-    }
-
-    .server-status.offline i {
-      color: var(--error-color);
-    }
-
-    .server-status.warning i {
-      color: var(--warning-color);
-    }
-
-    .server-status.monitor i {
-      color: var(--monitor-color);
-    }
-
-    .server-info {
-      margin-bottom: 15px;
-    }
-
-    .server-info p {
-      margin-bottom: 5px;
-      display: flex;
-      align-items: center;
-    }
-
-    .server-info i {
-      margin-right: 10px;
-      width: 20px;
+    .snapshot {
       text-align: center;
+      margin-top: 10px;
     }
 
-    .server-actions {
-      display: flex;
-      justify-content: space-between;
+    .snapshot-img {
+      max-width: 100%;
+      max-height: 120px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
     }
 
-    .tabs {
-      display: flex;
-      margin-bottom: 20px;
-      border-bottom: 1px solid #eee;
+    .snapshot-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 5px;
     }
 
-    .tab {
-      padding: 10px 20px;
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-      transition: all 0.3s;
-    }
-
-    .tab.active {
-      border-bottom-color: var(--info-color);
-      color: var(--info-color);
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    .log-container {
-      background-color: #2c3e50;
-      color: #ecf0f1;
-      padding: 15px;
-      border-radius: 5px;
-      font-family: monospace;
-      height: 300px;
-      overflow-y: auto;
-      margin-bottom: 20px;
-    }
-
-    .log-entry {
-      margin-bottom: 5px;
-      padding-bottom: 5px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .log-time {
-      color: #3498db;
-    }
-
-    .log-level {
-      display: inline-block;
-      width: 70px;
-      text-align: center;
-      border-radius: 3px;
-      margin: 0 5px;
-    }
-
-    .log-level.info {
-      background-color: var(--info-color);
-    }
-
-    .log-level.warning {
-      background-color: var(--warning-color);
-    }
-
-    .log-level.error {
-      background-color: var(--error-color);
-    }
-
-    .log-level.success {
-      background-color: var(--success-color);
-    }
-
-    .log-message {
-      color: #ecf0f1;
-    }
-
-    .log-source {
-      color: #95a5a6;
-      font-style: italic;
-    }
-
-    .settings-form {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    .form-group {
-      margin-bottom: 15px;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 600;
-    }
-
-    .form-group input,
-    .form-group select {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 1rem;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: var(--info-color);
-    }
-
-    .form-actions {
-      grid-column: 1 / -1;
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-
-    .notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 15px 20px;
-      border-radius: 5px;
-      color: white;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      z-index: 1000;
-      animation: slideIn 0.3s ease-out;
-    }
-
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
+    @media (max-width: 1366px) {
+      body {
+        font-size: 15px;
       }
 
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    .notification.success {
-      background-color: var(--success-color);
-    }
-
-    .notification.error {
-      background-color: var(--error-color);
-    }
-
-    .notification.warning {
-      background-color: var(--warning-color);
-    }
-
-    .notification.info {
-      background-color: var(--info-color);
-    }
-
-    .notification.monitor {
-      background-color: var(--monitor-color);
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 5px;
-      right: 10px;
-      cursor: pointer;
-      font-size: 1.2rem;
-    }
-
-    .loading {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100px;
-    }
-
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid rgba(0, 0, 0, 0.1);
-      border-radius: 50%;
-      border-top-color: var(--info-color);
-      animation: spin 1s ease-in-out infinite;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-      color: #7f8c8d;
-    }
-
-    .empty-state i {
-      font-size: 3rem;
-      margin-bottom: 20px;
-      color: #bdc3c7;
-    }
-
-    .empty-state h3 {
-      margin-bottom: 10px;
-    }
-
-    .empty-state p {
-      margin-bottom: 20px;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .modal.active {
-      display: flex;
-    }
-
-    .modal-content {
-      background-color: white;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 600px;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .modal-header {
-      padding: 15px 20px;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-    }
-
-    .modal-close {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      color: #7f8c8d;
-    }
-
-    .modal-body {
-      padding: 20px;
-    }
-
-    .modal-footer {
-      padding: 15px 20px;
-      border-top: 1px solid #eee;
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-
-    @media (max-width: 768px) {
       .dashboard {
-        flex-direction: column;
+        gap: 8px;
+        padding: 8px;
       }
 
-      .sidebar {
-        width: 100%;
-        max-height: 300px;
+      .card-header h2 {
+        font-size: 18px;
       }
 
-      .grid {
-        grid-template-columns: 1fr;
+      .info-item .label {
+        font-size: 13px;
       }
 
-      .settings-form {
-        grid-template-columns: 1fr;
+      .info-item .value {
+        font-size: 13px;
       }
     }
   </style>
@@ -697,657 +328,290 @@
 
 <body>
   <div class="dashboard">
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <i class="fas fa-tv"></i>
-        <h2>App Player</h2>
+    <!-- Header -->
+    <div class="header">
+      <h1>App Player Dashboard</h1>
+      <div class="status">
+        <div class="status-icon"></div>
+        <div id="deviceInfo">Player: base (9c30157f)</div>
+        <div class="timestamp" id="lastUpdate">Actualizado: 11/04/2025 13:13:54
+        </div>
       </div>
-      <ul class="sidebar-menu">
-        <li><a href="#" class="active" data-tab="devices"><i
-              class="fas fa-desktop"></i> Dispositivos</a></li>
-        <li><a href="#" data-tab="servers"><i class="fas fa-server"></i>
-            Servidores</a></li>
-        <li><a href="#" data-tab="logs"><i class="fas fa-list-alt"></i>
-            Registros</a></li>
-        <li><a href="#" data-tab="settings"><i class="fas fa-cog"></i>
-            Configuración</a></li>
-      </ul>
     </div>
-    <div class="main-content">
-      <div id="devices" class="tab-content active">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Dispositivos Conectados</h2>
-            <button class="refresh-btn" id="refresh-devices"><i
-                class="fas fa-sync-alt"></i></button>
+
+    <!-- System Information -->
+    <div class="card system-card">
+      <div class="card-header">
+        <h2><i class="fas fa-microchip"></i> Información del Sistema</h2>
+      </div>
+      <div class="info-grid">
+        <div class="info-item">
+          <i class="fas fa-server"></i>
+          <span class="label">Hostname:</span>
+          <span class="value" id="hostname">base</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-cog"></i>
+          <span class="label">Plataforma:</span>
+          <span class="value" id="platform">linux</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-microchip"></i>
+          <span class="label">Arq:</span>
+          <span class="value" id="arch">arm64</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-code-branch"></i>
+          <span class="label">Kernel:</span>
+          <span class="value" id="release">6.12.18-v8+</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-microchip"></i>
+          <span class="label">CPUs:</span>
+          <span class="value" id="cpus">4</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-clock"></i>
+          <span class="label">Uptime:</span>
+          <span class="value" id="uptime">4d 0h 8m 48s</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-chart-line"></i>
+          <span class="label">Carga:</span>
+          <span class="value" id="loadavg">1.81, 1.63, 1.62</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-globe"></i>
+          <span class="label">Timezone:</span>
+          <span class="value" id="timezone">UTC (+0000)</span>
+        </div>
+      </div>
+      <div class="info-item" style="margin-top: 15px;">
+        <i class="fas fa-memory"></i>
+        <span class="label">Memoria:</span>
+        <span class="value" id="memUsage">1.7 GB / 3.7 GB (54.8% libre)</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 45.2%;"></div>
+      </div>
+    </div>
+
+    <!-- Network Information -->
+    <div class="card network-card">
+      <div class="card-header">
+        <h2><i class="fas fa-network-wired"></i> Información de Red</h2>
+      </div>
+      <div class="network-interfaces">
+        <div class="interface">
+          <div class="interface-header">
+            <i class="fas fa-ethernet"></i> eth0
           </div>
-          <div id="devices-container" class="grid">
-            <div class="loading">
-              <div class="loading-spinner"></div>
-            </div>
+          <div class="info-item">
+            <i class="fas fa-globe"></i>
+            <span class="label">IP:</span>
+            <span class="value" id="eth0-ip">192.168.1.200</span>
+          </div>
+          <div class="info-item">
+            <i class="fas fa-mask"></i>
+            <span class="label">Máscara:</span>
+            <span class="value" id="eth0-mask">255.255.255.0</span>
+          </div>
+          <div class="info-item">
+            <i class="fas fa-fingerprint"></i>
+            <span class="label">MAC:</span>
+            <span class="value" id="eth0-mac">d8:3a:dd:0b:20:e8</span>
+          </div>
+        </div>
+        <div class="interface">
+          <div class="interface-header">
+            <i class="fas fa-wifi"></i> wlan0
+          </div>
+          <div class="info-item">
+            <i class="fas fa-globe"></i>
+            <span class="label">IP:</span>
+            <span class="value" id="wlan0-ip">192.168.1.84</span>
+          </div>
+          <div class="info-item">
+            <i class="fas fa-mask"></i>
+            <span class="label">Máscara:</span>
+            <span class="value" id="wlan0-mask">255.255.255.0</span>
+          </div>
+          <div class="info-item">
+            <i class="fas fa-fingerprint"></i>
+            <span class="label">MAC:</span>
+            <span class="value" id="wlan0-mac">d8:3a:dd:0b:20:e9</span>
           </div>
         </div>
       </div>
-      <div id="servers" class="tab-content">
-                <div class="card">
-                  <div class="card-header">
-            <h2 class="card-title">Estado de los Servidores</h2>
-            <button class="refresh-btn" id="refresh-servers"><i
-                class="fas fa-sync-alt"></i></button>
-                  </div>
-          <div id="servers-container" class="grid">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">Servidor Controlador</h3>
-                <span class="status-indicator status-online"
-                  id="controller-status"></span>
-                  </div>
-              <div class="server-info">
-                <p><i class="fas fa-network-wired"></i> URL: <span
-                    id="controller-url">http://localhost:3001</span></p>
-                <p><i class="fas fa-clock"></i> Uptime: <span
-                    id="controller-uptime">0:00:00</span></p>
-                <p><i class="fas fa-users"></i> Dispositivos: <span
-                    id="controller-devices">0</span></p>
-                </div>
-              <div class="server-actions">
-                <button class="btn btn-primary"
-                  id="controller-restart">Reiniciar</button>
-                <button class="btn btn-info" id="controller-logs">Ver
-                  Logs</button>
-              </div>
-            </div>
-                <div class="card">
-                  <div class="card-header">
-                <h3 class="card-title">Servidor Monitor</h3>
-                <span class="status-indicator status-monitor"
-                  id="monitor-status"></span>
-                  </div>
-              <div class="server-info">
-                <p><i class="fas fa-network-wired"></i> URL: <span
-                    id="monitor-url">http://localhost:3002</span></p>
-                <p><i class="fas fa-clock"></i> Uptime: <span
-                    id="monitor-uptime">0:00:00</span></p>
-                <p><i class="fas fa-users"></i> Dispositivos: <span
-                    id="monitor-devices">0</span></p>
-                    </div>
-              <div class="server-actions">
-                <button class="btn btn-monitor"
-                  id="monitor-restart">Reiniciar</button>
-                <button class="btn btn-info" id="monitor-logs">Ver Logs</button>
-                    </div>
-                  </div>
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">Servidor VLC</h3>
-                <span class="status-indicator status-online"
-                  id="vlc-status"></span>
-                </div>
-              <div class="server-info">
-                <p><i class="fas fa-network-wired"></i> URL: <span
-                    id="vlc-url">http://localhost:8080</span></p>
-                <p><i class="fas fa-clock"></i> Estado: <span
-                    id="vlc-state">Reproduciendo</span></p>
-                <p><i class="fas fa-film"></i> Archivo: <span
-                    id="vlc-file">playlist.m3u</span></p>
-              </div>
-              <div class="server-actions">
-                <button class="btn btn-success"
-                  id="vlc-play">Reproducir</button>
-                <button class="btn btn-warning" id="vlc-pause">Pausar</button>
-                <button class="btn btn-danger" id="vlc-stop">Detener</button>
-              </div>
-            </div>
-          </div>
+    </div>
+
+    <!-- VLC Status -->
+    <div class="card vlc-card">
+      <div class="card-header">
+        <h2><i class="fas fa-play-circle"></i> Estado de VLC</h2>
+      </div>
+      <div class="info-grid">
+        <div class="info-item">
+          <i class="fas fa-play-circle"></i>
+          <span class="label">Estado:</span>
+          <span class="value" id="vlc-playing">Reproduciendo</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-file-video"></i>
+          <span class="label">Video:</span>
+          <span class="value" id="currentItem">ForBiggerEscapes.mp4</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-list"></i>
+          <span class="label">Lista:</span>
+          <span class="value" id="playlistName">Videos Cortos</span>
         </div>
       </div>
-      <div id="logs" class="tab-content">
-                <div class="card">
-                  <div class="card-header">
-            <h2 class="card-title">Registros del Sistema</h2>
-            <div>
-              <button class="btn btn-primary" id="clear-logs">Limpiar</button>
-              <button class="refresh-btn" id="refresh-logs"><i
-                  class="fas fa-sync-alt"></i></button>
-                  </div>
-                    </div>
-          <div class="log-container" id="log-container">
-            <div class="log-entry">
-              <span class="log-time">12:00:00</span>
-              <span class="log-level info">INFO</span>
-              <span class="log-message">Sistema iniciado correctamente</span>
-              <span class="log-source">[Sistema]</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-      <div id="settings" class="tab-content">
-                <div class="card">
-                  <div class="card-header">
-            <h2 class="card-title">Configuración</h2>
-                  </div>
-          <form class="settings-form" id="settings-form">
-            <div class="form-group">
-              <label for="controller-url">URL del Servidor Controlador</label>
-              <input type="text" id="controller-url-input"
-                value="http://localhost:3001">
-                  </div>
-            <div class="form-group">
-              <label for="monitor-url">URL del Servidor Monitor</label>
-              <input type="text" id="monitor-url-input"
-                value="http://localhost:3002">
-                </div>
-            <div class="form-group">
-              <label for="vlc-url">URL del Servidor VLC</label>
-              <input type="text" id="vlc-url-input"
-                value="http://localhost:8080">
-              </div>
-            <div class="form-group">
-              <label for="heartbeat-interval">Intervalo de Heartbeat
-                (ms)</label>
-              <input type="number" id="heartbeat-interval" value="25000">
-            </div>
-            <div class="form-group">
-              <label for="max-reconnect">Máximo de Intentos de
-                Reconexión</label>
-              <input type="number" id="max-reconnect" value="5">
-          </div>
-            <div class="form-group">
-              <label for="reconnect-delay">Retraso de Reconexión (ms)</label>
-              <input type="number" id="reconnect-delay" value="1000">
+      <div class="vlc-time">
+        <span id="current-time">0:02</span> / <span id="total-time">0:15</span>
+      </div>
+      <div class="vlc-progress">
+        <div class="vlc-progress-fill" style="width: 14.3%;"></div>
+      </div>
+    </div>
+
+    <!-- Storage Information -->
+    <div class="card storage-card">
+      <div class="card-header">
+        <h2><i class="fas fa-hdd"></i> Almacenamiento</h2>
+      </div>
+      <div class="info-item">
+        <i class="fas fa-folder"></i>
+        <span class="label">Directorio:</span>
+        <span class="value" id="playlistDir">./public/videos</span>
+      </div>
+      <div class="info-item" style="margin-top: 15px;">
+        <i class="fas fa-hdd"></i>
+        <span class="label">Espacio:</span>
+        <span class="value" id="diskUsage">21.56 GB / 61.64 GB (65.0%
+          libre)</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 35.0%;"></div>
+      </div>
+      <div class="progress-label">
+        <span>Usado: 21.56 GB</span>
+        <span>Libre: 40.08 GB</span>
+      </div>
+      <div class="info-grid" style="margin-top: 15px;">
+        <div class="info-item">
+          <i class="fas fa-folder-open"></i>
+          <span class="label">Videos:</span>
+          <span class="value" id="videoStats">0 archivos</span>
         </div>
-            <div class="form-actions">
-              <button type="button" class="btn btn-danger"
-                id="reset-settings">Restablecer</button>
-              <button type="submit" class="btn btn-success"
-                id="save-settings">Guardar</button>
-            </div>
-          </form>
+        <div class="info-item">
+          <i class="fas fa-clock"></i>
+          <span class="label">Actualizado:</span>
+          <span class="value" id="storageTimestamp">13:13:54</span>
         </div>
+      </div>
+    </div>
+
+    <!-- App Information -->
+    <div class="card app-card">
+      <div class="card-header">
+        <h2><i class="fas fa-info-circle"></i> Información de la Aplicación</h2>
+      </div>
+      <div class="info-grid">
+        <div class="info-item">
+          <i class="fas fa-id-card"></i>
+          <span class="label">ID:</span>
+          <span class="value" id="deviceId">9c30157f</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-tag"></i>
+          <span class="label">Nombre:</span>
+          <span class="value" id="deviceName">base</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-cube"></i>
+          <span class="label">Tipo:</span>
+          <span class="value" id="deviceType">player</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-layer-group"></i>
+          <span class="label">Grupo:</span>
+          <span class="value" id="deviceGroup">default</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-code-branch"></i>
+          <span class="label">Versión:</span>
+          <span class="value" id="appVersion">1.0.0</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-node-js"></i>
+          <span class="label">Node:</span>
+          <span class="value" id="nodeVersion">v22.14.0</span>
+        </div>
+      </div>
+      <div class="info-grid" style="margin-top: 15px;">
+        <div class="info-item">
+          <i class="fas fa-server"></i>
+          <span class="label">Servidor:</span>
+          <span class="value" id="serverConfig">0.0.0.0:3000</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-video"></i>
+          <span class="label">VLC Config:</span>
+          <span class="value" id="vlcConfig">localhost:8080</span>
+        </div>
+      </div>
+      <div class="info-item" style="margin-top: 15px;">
+        <i class="fas fa-clock"></i>
+        <span class="label">Inicio:</span>
+        <span class="value" id="startTime">11/04/2025 13:13:54</span>
+      </div>
+    </div>
+
+    <!-- Playlist Information -->
+    <div class="card playlist-card">
+      <div class="card-header">
+        <h2><i class="fas fa-list"></i> Lista de Reproducción</h2>
+      </div>
+      <div class="info-grid">
+        <div class="info-item">
+          <i class="fas fa-play-circle"></i>
+          <span class="label">Activa:</span>
+          <span class="value" id="playlistActive">VideosCortos</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-file"></i>
+          <span class="label">Ruta:</span>
+          <span class="value" id="playlistPath">VideosCortos.m3u</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-hashtag"></i>
+          <span class="label">Índice:</span>
+          <span class="value" id="currentIndex">1 / 3</span>
+        </div>
+        <div class="info-item">
+          <i class="fas fa-calendar"></i>
+          <span class="label">Cargada:</span>
+          <span class="value" id="lastLoaded">10/04/2025</span>
+        </div>
+      </div>
+      <div class="info-item" style="margin-top: 15px;">
+        <i class="fas fa-save"></i>
+        <span class="label">Default:</span>
+        <span class="value" id="defaultPlaylist">wetechar (wetechar.m3u)</span>
+      </div>
+      <div class="info-item">
+        <i class="fas fa-info-circle"></i>
+        <span class="label">Estado:</span>
+        <span class="value" id="playlistStatus">
+          <i class="fas fa-check-circle"
+            style="color: var(--success-color);"></i> Activa
+        </span>
       </div>
     </div>
   </div>
 
-  <div class="modal" id="device-modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title" id="device-modal-title">Detalles del Dispositivo
-        </h3>
-        <button class="modal-close" id="device-modal-close">&times;</button>
-      </div>
-      <div class="modal-body" id="device-modal-body">
-        <!-- Contenido dinámico -->
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-danger"
-          id="device-modal-close-btn">Cerrar</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="notification-container"></div>
-
-  <script>
-    // Variables globales
-    let devices = [];
-    let logs = [];
-    let settings = {
-      controllerUrl: 'http://localhost:3001',
-      monitorUrl: 'http://localhost:3002',
-      vlcUrl: 'http://localhost:8080',
-      heartbeatInterval: 25000,
-      maxReconnectAttempts: 5,
-      reconnectDelay: 1000
-    };
-
-    // Inicialización
-    document.addEventListener('DOMContentLoaded', () => {
-      // Cargar configuración
-      loadSettings();
-
-      // Inicializar pestañas
-      initTabs();
-
-      // Cargar datos iniciales
-      fetchDevices();
-      fetchServers();
-      fetchLogs();
-
-      // Configurar eventos
-      setupEventListeners();
-
-      // Iniciar actualizaciones automáticas
-      setInterval(fetchDevices, 5000);
-      setInterval(fetchServers, 5000);
-      setInterval(fetchLogs, 10000);
-    });
-
-    // Funciones de inicialización
-    function initTabs() {
-      const tabLinks = document.querySelectorAll('.sidebar-menu a');
-      const tabContents = document.querySelectorAll('.tab-content');
-
-      tabLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-          e.preventDefault();
-
-          // Remover clase active de todos los enlaces y contenidos
-          tabLinks.forEach(l => l.classList.remove('active'));
-          tabContents.forEach(c => c.classList.remove('active'));
-
-          // Agregar clase active al enlace y contenido seleccionado
-          link.classList.add('active');
-          const tabId = link.getAttribute('data-tab');
-          document.getElementById(tabId).classList.add('active');
-        });
-      });
-    }
-
-    function setupEventListeners() {
-      // Botones de actualización
-      document.getElementById('refresh-devices').addEventListener('click', fetchDevices);
-      document.getElementById('refresh-servers').addEventListener('click', fetchServers);
-      document.getElementById('refresh-logs').addEventListener('click', fetchLogs);
-
-      // Botones de servidor
-      document.getElementById('controller-restart').addEventListener('click', () => restartServer('controller'));
-      document.getElementById('monitor-restart').addEventListener('click', () => restartServer('monitor'));
-      document.getElementById('vlc-play').addEventListener('click', () => vlcCommand('play'));
-      document.getElementById('vlc-pause').addEventListener('click', () => vlcCommand('pause'));
-      document.getElementById('vlc-stop').addEventListener('click', () => vlcCommand('stop'));
-
-      // Botones de logs
-      document.getElementById('clear-logs').addEventListener('click', clearLogs);
-
-      // Formulario de configuración
-      document.getElementById('settings-form').addEventListener('submit', saveSettings);
-      document.getElementById('reset-settings').addEventListener('click', resetSettings);
-
-      // Modal
-      document.getElementById('device-modal-close').addEventListener('click', closeDeviceModal);
-      document.getElementById('device-modal-close-btn').addEventListener('click', closeDeviceModal);
-    }
-
-    // Funciones de datos
-    async function fetchDevices() {
-      try {
-        const response = await fetch(`${settings.controllerUrl}/api/devices`);
-        if (!response.ok) throw new Error('Error al obtener dispositivos');
-
-        const data = await response.json();
-        devices = data;
-
-        renderDevices();
-      } catch (error) {
-        showNotification('Error al obtener dispositivos: ' + error.message, 'error');
-      }
-    }
-
-    async function fetchServers() {
-      try {
-        // Obtener estado del servidor controlador
-        const controllerResponse = await fetch(`${settings.controllerUrl}/health`);
-        const controllerStatus = controllerResponse.ok ? 'online' : 'offline';
-        document.getElementById('controller-status').className = `status-indicator status-${controllerStatus}`;
-
-        // Obtener estado del servidor monitor
-        const monitorResponse = await fetch(`${settings.monitorUrl}/api/devices`);
-        const monitorStatus = monitorResponse.ok ? 'online' : 'offline';
-        document.getElementById('monitor-status').className = `status-indicator status-${monitorStatus}`;
-
-        // Obtener estado de VLC
-        const vlcResponse = await fetch(`${settings.vlcUrl}/requests/status.json`);
-        const vlcStatus = vlcResponse.ok ? 'online' : 'offline';
-        document.getElementById('vlc-status').className = `status-indicator status-${vlcStatus}`;
-
-        if (vlcResponse.ok) {
-          const vlcData = await vlcResponse.json();
-          document.getElementById('vlc-state').textContent = vlcData.state || 'Desconocido';
-          document.getElementById('vlc-file').textContent = vlcData.information?.category?.meta?.filename || 'Ninguno';
-        }
-
-        // Actualizar contadores de dispositivos
-        document.getElementById('controller-devices').textContent = devices.length;
-
-        if (monitorResponse.ok) {
-          const monitorData = await monitorResponse.json();
-          document.getElementById('monitor-devices').textContent = monitorData.length;
-        }
-      } catch (error) {
-        showNotification('Error al obtener estado de servidores: ' + error.message, 'error');
-      }
-    }
-
-    async function fetchLogs() {
-      try {
-        const response = await fetch(`${settings.controllerUrl}/api/logs`);
-        if (!response.ok) throw new Error('Error al obtener logs');
-
-        const data = await response.json();
-        logs = data;
-
-        renderLogs();
-      } catch (error) {
-        showNotification('Error al obtener logs: ' + error.message, 'error');
-      }
-    }
-
-    // Funciones de renderizado
-    function renderDevices() {
-      const container = document.getElementById('devices-container');
-
-      if (devices.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-desktop"></i>
-            <h3>No hay dispositivos conectados</h3>
-            <p>Los dispositivos aparecerán aquí cuando se conecten al servidor.</p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = '';
-
-      devices.forEach(device => {
-        const deviceCard = document.createElement('div');
-        deviceCard.className = 'device-card';
-        deviceCard.innerHTML = `
-          <div class="device-header">
-            <div class="device-name">${device.name}</div>
-            <span class="status-indicator ${device.status === 'active' ? 'status-online' : 'status-offline'}"></span>
-          </div>
-          <div class="device-id">ID: ${device.id}</div>
-          <div class="device-info">
-            <p><i class="fas fa-network-wired"></i> IP: ${device.ip}</p>
-            <p><i class="fas fa-fingerprint"></i> MAC: ${device.mac}</p>
-            <p><i class="fas fa-clock"></i> Última conexión: ${formatDate(device.lastSeen)}</p>
-          </div>
-          <div class="snapshot-container">
-            ${device.snapshot ? `<img src="${device.snapshot}" alt="Snapshot de ${device.name}">` : '<div class="snapshot-placeholder">No hay snapshot disponible</div>'}
-          </div>
-          <div class="vlc-status ${device.vlc?.status?.status || 'stopped'}">
-            <i class="fas ${getVlcIcon(device.vlc?.status?.status)}"></i>
-            <span>VLC: ${device.vlc?.status?.status || 'Desconocido'}</span>
-          </div>
-          <div class="playlist-info">
-            <div class="playlist-name">${device.vlc?.playlist?.name || 'Sin playlist'}</div>
-            <div class="playlist-details">
-              Archivos: ${device.vlc?.playlist?.fileCount || 0} | 
-              Actual: ${device.vlc?.playlist?.currentIndex || 0}
-            </div>
-          </div>
-          <div class="device-actions">
-            <button class="btn btn-primary view-device" data-id="${device.id}">Ver Detalles</button>
-            <div class="command-panel">
-              <button class="command-btn" data-device="${device.id}" data-command="play"><i class="fas fa-play"></i></button>
-              <button class="command-btn" data-device="${device.id}" data-command="pause"><i class="fas fa-pause"></i></button>
-              <button class="command-btn" data-device="${device.id}" data-command="stop"><i class="fas fa-stop"></i></button>
-              <button class="command-btn" data-device="${device.id}" data-command="next"><i class="fas fa-forward"></i></button>
-              <button class="command-btn" data-device="${device.id}" data-command="previous"><i class="fas fa-backward"></i></button>
-            </div>
-          </div>
-        `;
-
-        container.appendChild(deviceCard);
-      });
-
-      // Agregar eventos a los botones
-      document.querySelectorAll('.view-device').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const deviceId = e.target.getAttribute('data-id');
-          showDeviceDetails(deviceId);
-        });
-      });
-
-      document.querySelectorAll('.command-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const deviceId = e.target.getAttribute('data-device');
-          const command = e.target.getAttribute('data-command');
-          sendCommand(deviceId, command);
-        });
-      });
-    }
-
-    function renderLogs() {
-      const container = document.getElementById('log-container');
-
-      if (logs.length === 0) {
-        container.innerHTML = '<div class="log-entry">No hay registros disponibles</div>';
-        return;
-      }
-
-      container.innerHTML = '';
-
-      logs.forEach(log => {
-        const logEntry = document.createElement('div');
-        logEntry.className = 'log-entry';
-        logEntry.innerHTML = `
-          <span class="log-time">${formatTime(log.timestamp)}</span>
-          <span class="log-level ${log.level.toLowerCase()}">${log.level}</span>
-          <span class="log-message">${log.message}</span>
-          <span class="log-source">[${log.source}]</span>
-        `;
-
-        container.appendChild(logEntry);
-      });
-
-      // Desplazar al final
-      container.scrollTop = container.scrollHeight;
-    }
-
-    // Funciones de utilidad
-    function formatDate(dateString) {
-      if (!dateString) return 'Nunca';
-
-      const date = new Date(dateString);
-      return date.toLocaleString();
-    }
-
-    function formatTime(timestamp) {
-      if (!timestamp) return '';
-
-      const date = new Date(timestamp);
-      return date.toLocaleTimeString();
-    }
-
-    function getVlcIcon(status) {
-      switch (status) {
-        case 'playing': return 'fa-play-circle';
-        case 'paused': return 'fa-pause-circle';
-        case 'stopped': return 'fa-stop-circle';
-        default: return 'fa-question-circle';
-      }
-    }
-
-    function showNotification(message, type = 'info') {
-      const container = document.getElementById('notification-container');
-
-      const notification = document.createElement('div');
-      notification.className = `notification ${type}`;
-      notification.innerHTML = `
-        ${message}
-        <span class="close-btn">&times;</span>
-      `;
-
-      container.appendChild(notification);
-
-      // Cerrar después de 5 segundos
-      setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-          container.removeChild(notification);
-        }, 300);
-      }, 5000);
-
-      // Cerrar al hacer clic
-      notification.querySelector('.close-btn').addEventListener('click', () => {
-        notification.style.opacity = '0';
-        setTimeout(() => {
-          container.removeChild(notification);
-        }, 300);
-      });
-    }
-
-    // Funciones de acción
-    async function sendCommand(deviceId, command) {
-      try {
-        const response = await fetch(`${settings.controllerUrl}/api/device/${deviceId}/command`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ command })
-        });
-
-        if (!response.ok) throw new Error('Error al enviar comando');
-
-        const data = await response.json();
-        showNotification(`Comando ${command} enviado a ${deviceId}`, 'success');
-
-        // Actualizar dispositivos
-        fetchDevices();
-      } catch (error) {
-        showNotification(`Error al enviar comando: ${error.message}`, 'error');
-      }
-    }
-
-    async function restartServer(server) {
-      try {
-        const url = server === 'controller' ? settings.controllerUrl : settings.monitorUrl;
-        const response = await fetch(`${url}/restart`, { method: 'POST' });
-
-        if (!response.ok) throw new Error(`Error al reiniciar servidor ${server}`);
-
-        showNotification(`Servidor ${server} reiniciado correctamente`, 'success');
-
-        // Actualizar estado de servidores
-        fetchServers();
-      } catch (error) {
-        showNotification(`Error al reiniciar servidor: ${error.message}`, 'error');
-      }
-    }
-
-    async function vlcCommand(command) {
-      try {
-        const response = await fetch(`${settings.vlcUrl}/requests/status.json?command=${command}`, { method: 'GET' });
-
-        if (!response.ok) throw new Error(`Error al enviar comando ${command} a VLC`);
-
-        showNotification(`Comando ${command} enviado a VLC`, 'success');
-
-        // Actualizar estado de servidores
-        fetchServers();
-      } catch (error) {
-        showNotification(`Error al enviar comando a VLC: ${error.message}`, 'error');
-      }
-    }
-
-    function clearLogs() {
-      document.getElementById('log-container').innerHTML = '';
-      showNotification('Registros limpiados', 'info');
-    }
-
-    function showDeviceDetails(deviceId) {
-      const device = devices.find(d => d.id === deviceId);
-      if (!device) return;
-
-      const modal = document.getElementById('device-modal');
-      const modalTitle = document.getElementById('device-modal-title');
-      const modalBody = document.getElementById('device-modal-body');
-
-      modalTitle.textContent = `Dispositivo: ${device.name}`;
-
-      modalBody.innerHTML = `
-        <div class="device-info">
-          <p><strong>ID:</strong> ${device.id}</p>
-          <p><strong>Nombre:</strong> ${device.name}</p>
-          <p><strong>IP:</strong> ${device.ip}</p>
-          <p><strong>MAC:</strong> ${device.mac}</p>
-          <p><strong>Estado:</strong> ${device.status}</p>
-          <p><strong>Última conexión:</strong> ${formatDate(device.lastSeen)}</p>
-        </div>
-        <div class="snapshot-container" style="height: 300px;">
-          ${device.snapshot ? `<img src="${device.snapshot}" alt="Snapshot de ${device.name}">` : '<div class="snapshot-placeholder">No hay snapshot disponible</div>'}
-        </div>
-        <div class="vlc-info">
-          <h3>Estado de VLC</h3>
-          <p><strong>Estado:</strong> ${device.vlc?.status?.status || 'Desconocido'}</p>
-          <p><strong>Conectado:</strong> ${device.vlc?.status?.connected ? 'Sí' : 'No'}</p>
-          <p><strong>Archivo actual:</strong> ${device.vlc?.status?.currentItem || 'Ninguno'}</p>
-        </div>
-        <div class="playlist-info">
-          <h3>Playlist</h3>
-          <p><strong>Nombre:</strong> ${device.vlc?.playlist?.name || 'Sin playlist'}</p>
-          <p><strong>Ruta:</strong> ${device.vlc?.playlist?.playlistPath || 'N/A'}</p>
-          <p><strong>Archivos:</strong> ${device.vlc?.playlist?.fileCount || 0}</p>
-          <p><strong>Índice actual:</strong> ${device.vlc?.playlist?.currentIndex || 0}</p>
-        </div>
-      `;
-
-      modal.classList.add('active');
-    }
-
-    function closeDeviceModal() {
-      const modal = document.getElementById('device-modal');
-      modal.classList.remove('active');
-    }
-
-    // Funciones de configuración
-    function loadSettings() {
-      const savedSettings = localStorage.getItem('appPlayerSettings');
-      if (savedSettings) {
-        settings = JSON.parse(savedSettings);
-
-        // Actualizar campos del formulario
-        document.getElementById('controller-url-input').value = settings.controllerUrl;
-        document.getElementById('monitor-url-input').value = settings.monitorUrl;
-        document.getElementById('vlc-url-input').value = settings.vlcUrl;
-        document.getElementById('heartbeat-interval').value = settings.heartbeatInterval;
-        document.getElementById('max-reconnect').value = settings.maxReconnectAttempts;
-        document.getElementById('reconnect-delay').value = settings.reconnectDelay;
-      }
-    }
-
-    function saveSettings(e) {
-      e.preventDefault();
-
-      // Obtener valores del formulario
-      settings.controllerUrl = document.getElementById('controller-url-input').value;
-      settings.monitorUrl = document.getElementById('monitor-url-input').value;
-      settings.vlcUrl = document.getElementById('vlc-url-input').value;
-      settings.heartbeatInterval = parseInt(document.getElementById('heartbeat-interval').value);
-      settings.maxReconnectAttempts = parseInt(document.getElementById('max-reconnect').value);
-      settings.reconnectDelay = parseInt(document.getElementById('reconnect-delay').value);
-
-      // Guardar en localStorage
-      localStorage.setItem('appPlayerSettings', JSON.stringify(settings));
-
-      showNotification('Configuración guardada correctamente', 'success');
-    }
-
-    function resetSettings() {
-      // Restablecer a valores predeterminados
-      settings = {
-        controllerUrl: 'http://localhost:3001',
-        monitorUrl: 'http://localhost:3002',
-        vlcUrl: 'http://localhost:8080',
-        heartbeatInterval: 25000,
-        maxReconnectAttempts: 5,
-        reconnectDelay: 1000
-      };
-
-      // Actualizar campos del formulario
-      document.getElementById('controller-url-input').value = settings.controllerUrl;
-      document.getElementById('monitor-url-input').value = settings.monitorUrl;
-      document.getElementById('vlc-url-input').value = settings.vlcUrl;
-      document.getElementById('heartbeat-interval').value = settings.heartbeatInterval;
-      document.getElementById('max-reconnect').value = settings.maxReconnectAttempts;
-      document.getElementById('reconnect-delay').value = settings.reconnectDelay;
-
-      showNotification('Configuración restablecida a valores predeterminados', 'info');
-    }
-  </script>
+  <script src="js/dashboard.js"></script>
 </body>
 
 </html>
