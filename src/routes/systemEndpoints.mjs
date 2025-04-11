@@ -166,10 +166,21 @@ router.get('/datetime', async (req, res) => {
         const currentDateTime = new Date();
 
         // Obtener la zona horaria
-        const { stdout: timezone } = await execAsync('timedatectl | grep "Time zone"');
+        const { stdout: timezoneInfo } = await execAsync('timedatectl show --property=Timezone --value');
+        const { stdout: timezoneOffset } = await execAsync('date +"%z %Z"');
 
-        // Obtener si NTP está activo
-        const { stdout: ntpStatus } = await execAsync('timedatectl | grep "NTP"');
+        // Verificar si NTP está activo
+        let ntpActive = false;
+        try {
+            const { stdout: ntpStatus } = await execAsync('ntpq -p');
+            // Verificar si hay servidores NTP activos
+            ntpActive = ntpStatus.includes('*') || ntpStatus.includes('o'); // '*' o 'o' indica que el servidor está en uso
+        } catch (error) {
+            console.warn('Error al verificar el estado de NTP:', error.message);
+        }
+
+        // Parsear offset y abreviatura
+        const [offset, abbr] = timezoneOffset.trim().split(' ');
 
         res.json({
             success: true,
@@ -177,8 +188,12 @@ router.get('/datetime', async (req, res) => {
                 current: currentDateTime.toISOString(),
                 localtime: currentDateTime.toString(),
                 timestamp: Math.floor(currentDateTime.getTime() / 1000),
-                timezone: timezone.trim(),
-                ntpStatus: ntpStatus.trim()
+                timezone: {
+                    name: timezoneInfo.trim(),
+                    offset: offset || "+0000",
+                    abbr: abbr || "UTC"
+                },
+                ntpActive: ntpActive // Refleja el estado real de NTP
             }
         });
     } catch (error) {
@@ -218,79 +233,15 @@ router.get('/datetime', async (req, res) => {
  *       500:
  *         description: Error al establecer la fecha y hora
  */
-// router.post('/datetime', async (req, res) => {
-//     try {
-//         const { datetime, timezone } = req.body;
-
-//         if (!datetime && !timezone) {
-//             return res.status(400).json({
-//                 success: false,
-//                 error: 'Se requiere fecha/hora o zona horaria'
-//             });
-//         }
-
-//         // Cambiar la fecha y hora si se proporciona
-//         if (datetime) {
-//             const dateObj = new Date(datetime);
-//             if (isNaN(dateObj.getTime())) {
-//                 return res.status(400).json({
-//                     success: false,
-//                     error: 'Formato de fecha inválido. Use ISO 8601 (YYYY-MM-DDTHH:MM:SS)'
-//                 });
-//             }
-
-//             // Formatear para el comando date
-//             const formattedDate = dateObj.toISOString().replace('T', ' ').substr(0, 19);
-//             await execAsync(`sudo date -s "${formattedDate}"`);
-
-//             // Intentar establecer el reloj de hardware, pero continuar si falla
-//             try {
-//                 await execAsync('sudo hwclock --systohc');
-//             } catch (hwclockError) {
-//                 console.warn('No se pudo acceder al reloj de hardware:', hwclockError.message);
-//                 // Continuamos sin error, ya que la fecha del sistema se actualizó correctamente
-//             }
-//         }
-
-//         // Cambiar la zona horaria si se proporciona
-//         if (timezone) {
-//             await execAsync(`sudo timedatectl set-timezone ${timezone}`);
-//         }
-
-//         // Obtener la información actualizada para devolver en la respuesta
-//         const currentDateTime = new Date();
-//         const { stdout: updatedTimezone } = await execAsync('timedatectl | grep "Time zone"');
-//         const { stdout: updatedNtpStatus } = await execAsync('timedatectl | grep "NTP"');
-
-//         res.json({
-//             success: true,
-//             message: 'Fecha y hora actualizadas correctamente',
-//             datetime: {
-//                 current: currentDateTime.toISOString(),
-//                 localtime: currentDateTime.toString(),
-//                 timestamp: Math.floor(currentDateTime.getTime() / 1000),
-//                 timezone: updatedTimezone.trim(),
-//                 ntpStatus: updatedNtpStatus.trim()
-//             }
-//         });
-//     } catch (error) {
-//         console.error(`Error al establecer la fecha y hora: ${error.message}`);
-//         res.status(500).json({
-//             success: false,
-//             error: 'Error al establecer la fecha y hora',
-//             message: error.message
-//         });
-//     }
-// });
 router.post('/datetime', async (req, res) => {
     try {
-        const { datetime, timezone } = req.body;
+        const { datetime, timezone, localDateTime } = req.body;
 
         // Validación de entrada
-        if (!datetime && !timezone) {
+        if (!datetime && !timezone && !localDateTime) {
             return res.status(400).json({
                 success: false,
-                error: 'Se requiere fecha/hora (datetime) o zona horaria (timezone)'
+                error: 'Se requiere fecha/hora (datetime), hora local (localDateTime) o zona horaria (timezone)'
             });
         }
 
@@ -301,40 +252,7 @@ router.post('/datetime', async (req, res) => {
             warnings: []
         };
 
-        // 1. Procesamiento de la fecha/hora
-        if (datetime) {
-            // Validar formato de fecha
-            const dateObj = new Date(datetime);
-            if (isNaN(dateObj.getTime())) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Formato de fecha inválido. Use ISO 8601 (ej: 2023-12-31T23:59:59)'
-                });
-            }
-
-            // Formatear para el comando date (formato aceptado por 'date -s')
-            const formattedDate = dateObj.toISOString().replace('T', ' ').slice(0, 19);
-
-            try {
-                // Actualizar fecha del sistema
-                await execAsync(`sudo date -s "${formattedDate}"`);
-                result.changes.datetime = formattedDate;
-
-                // Intentar sincronizar con reloj hardware (opcional)
-                try {
-                    await execAsync('sudo hwclock --systohc');
-                    result.changes.hwclockSynced = true;
-                } catch (hwclockError) {
-                    result.warnings.push('No se pudo sincronizar con el reloj de hardware (RTC)');
-                    // Esto es común en Raspberry Pi sin RTC conectado
-                }
-            } catch (dateError) {
-                console.error('Error al actualizar fecha:', dateError);
-                throw new Error('No se pudo actualizar la fecha del sistema');
-            }
-        }
-
-        // 2. Procesamiento de la zona horaria
+        // Primero procesamos la zona horaria si se proporciona, para que la fecha se establezca con la zona correcta
         if (timezone) {
             // Validar formato de timezone (ej: "America/Mexico_City")
             if (!timezone.match(/^[a-zA-Z_]+\/[a-zA-Z_]+$/)) {
@@ -353,10 +271,67 @@ router.post('/datetime', async (req, res) => {
             }
         }
 
+        // Procesamiento de la fecha/hora basado en localDateTime o datetime
+        if (localDateTime || datetime) {
+            try {
+                let formattedDate;
+
+                if (localDateTime) {
+                    // Si recibimos localDateTime, lo procesamos directamente
+                    // Primero extraemos la parte de fecha y hora sin la zona horaria
+                    const localTimeMatch = localDateTime.match(/([A-Za-z]{3}\s[A-Za-z]{3}\s\d{1,2}\s\d{4}\s\d{2}:\d{2}:\d{2})/);
+
+                    if (!localTimeMatch) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Formato de localDateTime inválido. Use el formato devuelto por GET /datetime'
+                        });
+                    }
+
+                    // Convertimos directamente el formato local al formato aceptado por date
+                    const { stdout: dateConversion } = await execAsync(`date -d "${localTimeMatch[1]}" '+%Y-%m-%d %H:%M:%S'`);
+                    formattedDate = dateConversion.trim();
+                    result.changes.localDateTime = localDateTime;
+                } else {
+                    // Si recibimos datetime (ISO), lo procesamos como antes
+                    const dateObj = new Date(datetime);
+                    if (isNaN(dateObj.getTime())) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Formato de fecha inválido. Use ISO 8601 (ej: 2023-12-31T23:59:59)'
+                        });
+                    }
+
+                    // Formatear para usar hora local del sistema
+                    const { stdout: localTimeFormat } = await execAsync(`date -d "${datetime}" '+%Y-%m-%d %H:%M:%S'`);
+                    formattedDate = localTimeFormat.trim();
+                    result.changes.datetime = formattedDate;
+                }
+
+                // Actualizar fecha del sistema
+                await execAsync(`sudo date -s "${formattedDate}"`);
+
+                // Intentar sincronizar con reloj hardware (opcional)
+                try {
+                    await execAsync('sudo hwclock --systohc');
+                    result.changes.hwclockSynced = true;
+                } catch (hwclockError) {
+                    result.warnings.push('No se pudo sincronizar con el reloj de hardware (RTC)');
+                }
+            } catch (dateError) {
+                console.error('Error al actualizar fecha:', dateError);
+                throw new Error('No se pudo actualizar la fecha del sistema: ' + dateError.message);
+            }
+        }
+
         // Obtener información actualizada del sistema
         const currentDateTime = new Date();
         const { stdout: timezoneInfo } = await execAsync('timedatectl show --property=Timezone --value');
+        const { stdout: timezoneOffset } = await execAsync('date +"%z %Z"');
         const { stdout: ntpStatus } = await execAsync('timedatectl show --property=NTPSynchronized --value');
+
+        // Parsear offset y abreviatura
+        const [offset, abbr] = timezoneOffset.trim().split(' ');
 
         // Preparar respuesta
         res.json({
@@ -365,7 +340,11 @@ router.post('/datetime', async (req, res) => {
                 isoDateTime: currentDateTime.toISOString(),
                 localDateTime: currentDateTime.toString(),
                 unixTimestamp: Math.floor(currentDateTime.getTime() / 1000),
-                timezone: timezoneInfo.trim(),
+                timezone: {
+                    name: timezoneInfo.trim(),
+                    offset: offset || "+0000",
+                    abbr: abbr || "UTC"
+                },
                 ntpActive: ntpStatus.trim() === 'yes'
             }
         });
@@ -416,7 +395,7 @@ router.post('/datetime/ntp', async (req, res) => {
         }
 
         // Activar o desactivar NTP según el parámetro
-        const command = enabled ? 'sudo timedatectl set-ntp true' : 'sudo timedatectl set-ntp false';
+        const command = enabled ? 'sudo systemctl start ntp' : 'sudo systemctl stop ntp';
         await execAsync(command);
 
         res.json({
@@ -451,10 +430,32 @@ router.post('/datetime/sync', async (req, res) => {
         // Forzar una sincronización con NTP
         await execAsync('sudo systemctl restart systemd-timesyncd');
 
+        // Esperar un momento para que se complete la sincronización
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Obtener información actualizada
+        const currentDateTime = new Date();
+        const { stdout: timezoneInfo } = await execAsync('timedatectl show --property=Timezone --value');
+        const { stdout: timezoneOffset } = await execAsync('date +"%z %Z"');
+        const { stdout: ntpStatus } = await execAsync('timedatectl show --property=NTPSynchronized --value');
+
+        // Parsear offset y abreviatura
+        const [offset, abbr] = timezoneOffset.trim().split(' ');
+
         res.json({
             success: true,
             message: 'Sincronización con servidor NTP iniciada',
-            timestamp: new Date().toISOString()
+            currentStatus: {
+                isoDateTime: currentDateTime.toISOString(),
+                localDateTime: currentDateTime.toString(),
+                unixTimestamp: Math.floor(currentDateTime.getTime() / 1000),
+                timezone: {
+                    name: timezoneInfo.trim(),
+                    offset: offset || "+0000",
+                    abbr: abbr || "UTC"
+                },
+                ntpActive: ntpStatus.trim() === 'yes'
+            }
         });
     } catch (error) {
         console.error(`Error al sincronizar con NTP: ${error.message}`);

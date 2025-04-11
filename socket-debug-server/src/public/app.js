@@ -20,6 +20,32 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 5000; // 5 segundos
 
+// Función para obtener la dirección del servidor basada en el dispositivo seleccionado
+const getServerUrl = () => {
+    if (!selectedDeviceId || !devices.length) {
+        return 'http://localhost:3000'; // URL por defecto si no hay dispositivo seleccionado
+    }
+
+    // Buscar el dispositivo seleccionado en el array de dispositivos
+    const selectedDevice = devices.find(device => device.id === selectedDeviceId);
+    if (selectedDevice && selectedDevice.ip) {
+        return `http://${selectedDevice.ip}:3000`;
+    }
+
+    return 'http://localhost:3000'; // URL por defecto como fallback
+};
+
+// Definir las URLs de la API de forma dinámica
+const getApiUrls = () => {
+    const baseUrl = getServerUrl();
+    return {
+        getDateTime: `${baseUrl}/api/system/datetime`,
+        setDateTime: `${baseUrl}/api/system/datetime`,
+        setNtp: `${baseUrl}/api/system/datetime/ntp`,
+        syncNtp: `${baseUrl}/api/system/datetime/sync`
+    };
+};
+
 // Módulo para el manejo de fecha y hora
 const DateTimeModule = (() => {
     // Elementos del DOM
@@ -35,14 +61,6 @@ const DateTimeModule = (() => {
         setDateTimeBtn: document.getElementById('setDateTime'),
         syncNowBtn: document.getElementById('syncNow'),
         notification: document.getElementById('notification')
-    };
-
-    // URLs de la API
-    const apiUrls = {
-        getDateTime: '/api/system/datetime',
-        setDateTime: '/api/system/datetime',
-        setNtp: '/api/system/datetime/ntp',
-        syncNtp: '/api/system/datetime/sync'
     };
 
     // Función para formatear la fecha
@@ -90,7 +108,8 @@ const DateTimeModule = (() => {
     // Función para obtener la fecha y hora actual del sistema
     const fetchDateTime = async () => {
         try {
-            const response = await fetch(apiUrls.getDateTime);
+            const urls = getApiUrls();
+            const response = await fetch(urls.getDateTime);
             if (!response.ok) {
                 throw new Error('Error al obtener la fecha y hora');
             }
@@ -113,16 +132,15 @@ const DateTimeModule = (() => {
     const updateDateTimeDisplay = (datetime) => {
         elements.currentDateTime.textContent = formatDateTime(datetime.current);
 
-        // Extraer la zona horaria del string completo
-        const timezoneMatch = datetime.timezone.match(/Time zone: ([^\s]+)/);
+        // Verificar si datetime.timezone es una cadena antes de usar match
+        const timezoneMatch = typeof datetime.timezone === 'string' ? datetime.timezone.match(/Time zone: ([^\s]+)/) : null;
         const timezone = timezoneMatch ? timezoneMatch[1] : 'Desconocida';
         elements.timezoneName.textContent = `Zona horaria: ${timezone}`;
 
         // Extraer el estado de NTP
-        const ntpActive = datetime.ntpStatus.includes('active');
+        const ntpActive = typeof datetime.ntpActive === 'boolean' && datetime.ntpActive;
         elements.ntpStatus.textContent = `NTP: ${ntpActive ? 'Activo' : 'Inactivo'}`;
-
-        // Actualizar el estado del toggle de NTP
+        // Actualizar el estado del toggle de NTP   
         elements.ntpEnabled.checked = ntpActive;
 
         // Establecer el valor actual en el input de fecha y hora
@@ -133,20 +151,23 @@ const DateTimeModule = (() => {
     const setDateTime = async () => {
         try {
             const newDateTime = elements.newDatetime.value;
+            console.log("🚀 ~ setDateTime ~ newDateTime:", newDateTime)
             const timezone = elements.timezoneSelect.value;
 
             if (!newDateTime) {
                 showNotification('Por favor, seleccione una fecha y hora', 'warning');
+                console.log("🚀 ~ setDateTime ~ data:", data)
                 return;
             }
 
-            const response = await fetch(apiUrls.setDateTime, {
+            const urls = getApiUrls();
+            const response = await fetch(urls.setDateTime, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    datetime: new Date(newDateTime).toISOString(),
+                    datetime: newDateTime,
                     timezone: timezone
                 })
             });
@@ -156,7 +177,7 @@ const DateTimeModule = (() => {
             }
 
             const data = await response.json();
-
+            console.log("🚀 ~ setDateTime ~ data:", data)
             if (data.success) {
                 showNotification('Fecha y hora actualizadas correctamente');
                 fetchDateTime(); // Actualizar la visualización
@@ -174,12 +195,13 @@ const DateTimeModule = (() => {
         try {
             const enabled = elements.ntpEnabled.checked;
 
-            const response = await fetch(apiUrls.setNtp, {
+            const urls = getApiUrls();
+            const response = await fetch(urls.setNtp, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ enabled })
+                body: JSON.stringify({ enabled: enabled })
             });
 
             if (!response.ok) {
@@ -190,23 +212,24 @@ const DateTimeModule = (() => {
 
             if (data.success) {
                 showNotification(`NTP ${enabled ? 'activado' : 'desactivado'} correctamente`);
-                fetchDateTime(); // Actualizar la visualización
+                // Actualizar la visualización después de un breve retraso para permitir que el servidor procese el cambio
+                setTimeout(async () => {
+                    await fetchDateTime(); // Asegúrate de que el estado se actualice correctamente
+                }, 5000); // Ajusta el tiempo según sea necesario
             } else {
                 throw new Error(data.error || 'Error desconocido');
             }
         } catch (error) {
             console.error('Error:', error);
             showNotification(`Error: ${error.message}`, 'error');
-
-            // Revertir el cambio en el UI si hay un error
-            elements.ntpEnabled.checked = !elements.ntpEnabled.checked;
         }
     };
 
     // Función para sincronizar con NTP
     const syncNow = async () => {
         try {
-            const response = await fetch(apiUrls.syncNtp, {
+            const urls = getApiUrls();
+            const response = await fetch(urls.syncNtp, {
                 method: 'POST'
             });
 
@@ -234,7 +257,7 @@ const DateTimeModule = (() => {
         fetchDateTime();
 
         // Configurar los eventos
-        elements.refreshBtn.addEventListener('click', fetchDateTime);
+        elements.refreshBtn.addEventListener('click', setDateTime);
         elements.setDateTimeBtn.addEventListener('click', setDateTime);
         elements.ntpEnabled.addEventListener('change', toggleNtpStatus);
         elements.syncNowBtn.addEventListener('click', syncNow);

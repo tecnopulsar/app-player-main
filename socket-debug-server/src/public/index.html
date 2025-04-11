@@ -112,7 +112,8 @@
                 <div class="datetime-header">
                     <h3>Fecha y Hora del Sistema</h3>
                     <button class="btn btn-outline" id="refreshDateTime"><i
-                            class="fas fa-sync"></i> Actualizar</button>
+                            class="fas fa-sync"></i> Ajustar Fecha y
+                        Hora</button>
                 </div>
                 <div class="datetime-content">
                     <div class="datetime-current">
@@ -149,8 +150,10 @@
                         </div>
                         <div class="toggle-group">
                             <label for="ntpEnabled">Sincronización NTP:</label>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="ntpEnabled">
+                            <label class="toggle-switch"
+                                aria-label="Activar/desactivar sincronización NTP">
+                                <input type="checkbox" id="ntpEnabled"
+                                    aria-describedby="ntpStatus">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>

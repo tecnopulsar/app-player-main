@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-04-10T15:33:49.477Z",
+  "timestamp": "2025-04-11T00:11:59.111Z",
   "system": {
     "hostname": "base",
     "platform": "linux",
@@ -7,12 +7,12 @@
     "release": "6.12.18-v8+",
     "cpus": 4,
     "totalMem": 3923357696,
-    "freeMem": 1857187840,
-    "uptime": 268123.84,
+    "freeMem": 1713938432,
+    "uptime": 299213.42,
     "loadavg": [
-      1.86,
-      1.82,
-      2.21
+      2.06,
+      2.21,
+      2.69
     ],
     "network": {
       "lo": {
@@ -34,7 +34,12 @@
         "internal": false
       }
     },
-    "timestamp": "2025-04-10T15:33:49.398Z"
+    "timezone": {
+      "name": "UTC",
+      "offset": "+0000",
+      "abbr": "UTC"
+    },
+    "timestamp": "2025-04-11T00:11:58.994Z"
   },
   "storage": {
     "playlistDirectory": "./public/videos",
@@ -45,9 +50,9 @@
       "fileCount": 0
     },
     "totalSpace": 61641601024,
-    "freeSpace": 40107061248,
-    "usedSpace": 21534539776,
-    "timestamp": "2025-04-10T15:33:49.435Z"
+    "freeSpace": 40081326080,
+    "usedSpace": 21560274944,
+    "timestamp": "2025-04-11T00:11:59.075Z"
   },
   "vlc": {
     "connected": true,
@@ -55,8 +60,8 @@
     "paused": false,
     "stopped": false,
     "currentItem": "ForBiggerBlazes.mp4",
-    "position": 0.62578791379929,
-    "time": 9,
+    "position": 0.44280061125755,
+    "time": 6,
     "length": 15,
     "volume": 0,
     "random": false,
@@ -77,7 +82,7 @@
       "port": 8080
     },
     "version": "1.0.0",
-    "startTime": "2025-04-10T15:33:49.473Z",
+    "startTime": "2025-04-11T00:11:59.107Z",
     "nodeVersion": "v22.14.0"
   },
   "activePlaylist": {
@@ -95,6 +100,6 @@
   },
   "snapshot": {
     "url": "public/snapshots/snapshot.jpg",
-    "createdAt": "2025-04-10T15:33:46.139Z"
+    "createdAt": "2025-04-11T00:12:16.183Z"
   }
 }

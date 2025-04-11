@@ -64,6 +64,33 @@ async function getSystemInfo() {
     const networkInterfaces = os.networkInterfaces();
     const network = {};
 
+    // Obtener información de zona horaria del sistema
+    let timezone = {
+        name: "UTC",
+        offset: "+0000",
+        abbr: "UTC"
+    };
+
+    try {
+        // Ejecutar comandos para obtener información de zona horaria
+        const { exec } = require('child_process');
+        const { promisify } = require('util');
+        const execAsync = promisify(exec);
+
+        const { stdout: tzName } = await execAsync('timedatectl show --property=Timezone --value');
+        const { stdout: tzData } = await execAsync('date +"%z %Z"');
+
+        const [offset, abbr] = tzData.trim().split(' ');
+
+        timezone = {
+            name: tzName.trim(),
+            offset: offset || "+0000",
+            abbr: abbr || "UTC"
+        };
+    } catch (error) {
+        console.warn('No se pudo obtener información de zona horaria:', error.message);
+    }
+
     // Filtrar y formatear interfaces de red
     Object.keys(networkInterfaces).forEach(name => {
         const iface = networkInterfaces[name].find(i => i.family === 'IPv4');
@@ -88,6 +115,7 @@ async function getSystemInfo() {
         uptime: os.uptime(),
         loadavg: os.loadavg(),
         network,
+        timezone,
         timestamp: new Date().toISOString()
     };
 }
